@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone')->unique()->nullable();
             $table->boolean('email_verified')->default(0);
-            $table->string('password');
+            $table->string('password')->nullable();
             $table->string('verification_token')->nullable();
             $table->dateTime('verification_token_expiry')->nullable();
             $table->string('token')->nullable();

@@ -9,7 +9,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class UserEmailVerificationMail extends Mailable
+class UserPasswordResetMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -22,7 +22,7 @@ class UserEmailVerificationMail extends Mailable
     public function __construct($name, $token)
     {
         $this->name = $name;
-        $this->link = env('FRONTEND_URL').'/verify-email/'.$token;
+        $this->link = env('FRONTEND_URL').'/reset-password/'.$token;
     }
 
     /**
@@ -31,7 +31,7 @@ class UserEmailVerificationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Email Verification',
+            subject: 'Password Reset',
         );
     }
 
@@ -41,7 +41,7 @@ class UserEmailVerificationMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.user_email_verification_mail',
+            markdown: 'emails.user_password_reset_mail',
         );
     }
 
