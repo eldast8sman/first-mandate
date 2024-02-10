@@ -26,8 +26,8 @@ return new class extends Migration
             $table->dateTime('token_expiry')->nullable();
             $table->integer('status')->default(1);
             $table->string('section')->nullable();
-            $table->timestamp('last_login');
-            $table->timestamp('prev_login');
+            $table->timestamp('last_login')->nullable();
+            $table->timestamp('prev_login')->nullable();
             $table->timestamps();
         });
     }

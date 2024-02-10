@@ -44,6 +44,7 @@ class AuthController extends Controller
                 'message' => 'Network Error! Please try again later'
             ], 500);
         }
+        $all['uuid'] = $uuid;
         $all['password'] = Hash::make($request->password);
         $all['verification_token'] = Str::random(20).time();
         $all['verification_token_expiry'] = date('Y-m-d H:i:s', time() + 1200);
@@ -125,7 +126,7 @@ class AuthController extends Controller
     }
 
     public function activate_account(ActivateAccountRequest $request){
-        $user = User::where('email_verification_token', $request->token)->first();
+        $user = User::where('verification_token', $request->token)->first();
         if($user->email_verified == 1){
             $user->verification_token = NULL;
             $user->verification_token_expiry = NULL;
@@ -225,9 +226,12 @@ class AuthController extends Controller
         return auth('user-api')->user();
     }
 
-    public function show(User $user)
-    {
-        //
+    public function me(){
+        return response([
+            'status' => 'success',
+            'message' => 'User details fetched successfully',
+            'data' => self::user()
+        ], 200);
     }
 
     public function update(UpdateUserRequest $request, User $user)
