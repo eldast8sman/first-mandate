@@ -19,15 +19,15 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('phone')->unique()->nullable();
             $table->boolean('email_verified')->default(0);
-            $table->string('password');
+            $table->string('password')->nullable();
             $table->string('verification_token')->nullable();
             $table->dateTime('verification_token_expiry')->nullable();
             $table->string('token')->nullable();
             $table->dateTime('token_expiry')->nullable();
             $table->integer('status')->default(1);
             $table->string('section')->nullable();
-            $table->timestamp('last_login');
-            $table->timestamp('prev_login');
+            $table->timestamp('last_login')->nullable();
+            $table->timestamp('prev_login')->nullable();
             $table->timestamps();
         });
     }
