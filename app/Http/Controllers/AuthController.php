@@ -221,7 +221,7 @@ class AuthController extends Controller
         ], 200);
     }
 
-    public static function user(ResetPasswordRequest $request){
+    public static function user(){
         return auth('user-api')->user();
     }
 
