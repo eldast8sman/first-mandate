@@ -55,9 +55,7 @@ class AuthController extends Controller
                 'message' => 'Registration failed. Please try again later'
             ], 500);
         }
-        $user->name = $user->first_name.' '.$user->last_name;
-        Mail::to($user)->send(new UserEmailVerificationMail($user->name, $user->verification_token));
-        unset($user->name);
+        Mail::to($user)->send(new UserEmailVerificationMail($user->name, $user->verification_token));      
 
         if(!$login = $this->login_function($user->email, $request->password)){
             return response([
@@ -170,7 +168,6 @@ class AuthController extends Controller
         $user->verification_token = Str::random(20).time();
         $user->verification_token_expiry = date('Y-m-d H:i:s', time() + 1200);
         $user->save();
-        $user->name = $user->first_name.' '.$user->last_name;
         Mail::to($user)->send(new UserEmailVerificationMail($user->name, $user->verification_token));
 
         return response([
@@ -191,7 +188,6 @@ class AuthController extends Controller
         $user->token = Str::random(20).time();
         $user->token_expiry = date('Y-m-d H:i:s', time() + 300);
         $user->save();
-        $user->name = $user->first_name.' '.$user->last_name;
         Mail::to($user)->send(new UserPasswordResetMail($user->name, $user->token));
 
         return response([
