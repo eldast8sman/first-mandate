@@ -21,6 +21,7 @@ return new class extends Migration
             $table->foreignIdFor(User::class, 'manager_id');
             $table->string('name');
             $table->string('email');
+            $table->string('phone');
             $table->integer('status');
             $table->timestamps();
         });

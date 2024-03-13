@@ -20,6 +20,13 @@ class PropertyTenant extends Model
         'phone',
         'current_tenant',
         'lease_state',
-        'lease_end'
+        'lease_end',
+        'rent_term',
+        'rent_amount',
+        'rent_due_date',
+        'rent_payment_status',
+        'payment_type',
+        'no_of_installments',
+        'installment_amount'
     ];
 }

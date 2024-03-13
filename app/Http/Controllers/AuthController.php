@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AccountActivationRequest;
 use App\Http\Requests\ActivateAccountRequest;
 use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\LoginRequest;
@@ -150,6 +151,33 @@ class AuthController extends Controller
         return response([
             'status' => 'success',
             'message' => 'Email verified successful'
+        ], 200);
+    }
+
+    public function activate_from_addition(AccountActivationRequest $request){
+        $user = User::where('verification_token', $request->token)->first();
+        if(empty($user)){
+            return response([
+                'status' => 'failed',
+                'message' => 'User Not Found'
+            ], 404);
+        }
+
+        if($user->verification_token_expiry < date('Y-m-d H:i:s')){
+            return response([
+                'status' => 'failed',
+                'message' => 'Expired Link'
+            ], 422);
+        }
+        $user->password = Hash::make($request->password);
+        $user->email_verified = 1;
+        $user->verification_token = NULL;
+        $user->verification_token_expiry = NULL;
+        $user->save();
+
+        return response([
+            'status' => 'success',
+            'message' => 'Account successfully activated'
         ], 200);
     }
 

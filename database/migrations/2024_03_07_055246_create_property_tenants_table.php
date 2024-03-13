@@ -17,16 +17,23 @@ return new class extends Migration
         Schema::create('property_tenants', function (Blueprint $table) {
             $table->id();
             $table->string('uuid');
-            $table->foreignIdFor(User::class, 'user_id');
+            $table->integer('user_id')->nullable();
             $table->foreignIdFor(User::class, 'landlord_id');
             $table->foreignIdFor(Property::class, 'property_id');
             $table->foreignIdFor(PropertyUnit::class, 'property_unit_id');
             $table->string('name');
-            $table->string('email');
-            $table->string('phone');
-            $table->boolean('current_tenant');
+            $table->string('email')->nullable();
+            $table->string('phone')->nullable();
+            $table->boolean('current_tenant')->default(1);
             $table->date('lease_start');
             $table->date('lease_end');
+            $table->string('rent_term')->nullable();
+            $table->double('rent_amount')->nullable();
+            $table->date('rent_due_date')->nullable();
+            $table->string('rent_payment_status');
+            $table->string('payment_type')->default('one_time');
+            $table->integer('no_of_installments')->default(1);
+            $table->double('installment_amount')->nullable();
             $table->timestamps();
         });
     }

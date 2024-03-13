@@ -15,6 +15,7 @@ return new class extends Migration
     {
         Schema::create('property_units', function (Blueprint $table) {
             $table->id();
+            $table->string('uuid');
             $table->foreignIdFor(Property::class, 'property_id');
             $table->foreignIdFor(User::class, 'landlord_id');
             $table->string('unit_name')->default('Flat');
