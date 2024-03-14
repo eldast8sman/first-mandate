@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Landlord\PropertyController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use PharIo\Manifest\AuthorCollection;
@@ -28,5 +29,11 @@ Route::controller(AuthController::class)->group(function(){
 Route::middleware('auth:user-api')->group(function(){
     Route::controller(AuthController::class)->group(function(){
         Route::get('/me', 'me')->name('user.me');
+    });
+
+    Route::controller(PropertyController::class)->group(function(){
+        Route::get('/properties', 'index')->name('landlord.property.index');
+        Route::post('/properties', 'store')->name('landlord.property.store');
+        Route::get('/properties/{uuid}', 'show')->name('landlord.property.show');
     });
 });
