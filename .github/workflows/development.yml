@@ -51,7 +51,7 @@ jobs:
             cd /backenddev
             git pull origin development
             composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-            php artisan migrate:refresh
+            php artisan migrate
             php artisan config:clear
             php artisan cache:clear
             php artisan view:clear
