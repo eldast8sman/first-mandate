@@ -49,8 +49,9 @@ jobs:
           script_stop: true
           script: |
             cd backenddev
+            git stash
             git pull origin development
-            composer update -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+            composer install
             php artisan migrate
             php artisan config:clear
             php artisan cache:clear
