@@ -353,6 +353,12 @@ class PropertyController extends Controller
                 $tenant = self::tenant($tenant);
             }
         }
+
+        return response([
+            'status' => 'success',
+            'message' => 'Tenants fetched successfully',
+            'data' => $tenants
+        ], 200);
     }
 
     public function store_unit(StorePropertyUnitRequest $request, $uuid){
