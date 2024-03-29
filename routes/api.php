@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Landlord\PropertyController;
+use App\Http\Controllers\Landlord\ReminderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use PharIo\Manifest\AuthorCollection;
@@ -35,5 +36,22 @@ Route::middleware('auth:user-api')->group(function(){
         Route::get('/properties', 'index')->name('landlord.property.index');
         Route::post('/properties', 'store')->name('landlord.property.store');
         Route::get('/properties/{uuid}', 'show')->name('landlord.property.show');
+        Route::post('/property-managers', 'store_manager')->name('landlord.propertManager.store');
+        Route::get('/property-managers', 'property_managers')->name('landlord.propertyManager.index');
+        Route::get('/property-managers/{uuid}', 'property_manager')->name('landlord.propertyManager.show');
+        Route::post('/properties/{uuid}/units', 'store_unit')->name('lanldord.property.unit.store');
+        Route::post('/properties-units/{uuid}/tenants', 'store_tenant')->name('landord.propertyUnit.tenant.store');
+        Route::get('/tenants', 'tenants')->name('property.tenant.index');
+        Route::post('/properties/{uuid}/units', 'store_unit')->name('property.unit.store');
+        Route::put('/property-managers/{uuid}', 'update_manager')->name('property.manager.update');
+        Route::put('/tenants/{uuid}', 'update_tenant')->name('property.tenant.update');
+    });
+
+    Route::controller(ReminderController::class)->group(function(){
+        Route::post('/reminders', 'store')->name('landlord.reminder.store');
+        Route::get('/reminders', 'index')->name('landlord.reminder.index');
+        Route::get('/reminders/{uuid}', 'show')->name('landlord.reminder.show');
+        Route::put('/reminders/{uuid}', 'update')->name('landlord.reminder.update');
+        Route::delete('/reminders/{uuid}', 'destroy')->name("landlord.reminder.delete");
     });
 });

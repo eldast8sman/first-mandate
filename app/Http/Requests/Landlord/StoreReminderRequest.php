@@ -4,7 +4,7 @@ namespace App\Http\Requests\Landlord;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StorePropertyManagerRequest extends FormRequest
+class StoreReminderRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,10 +22,10 @@ class StorePropertyManagerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'property_uuid' => 'required|string|exists:properties,uuid',
-            'name' => 'required|string|',
-            'email' => 'string|email|required',
-            'phone' => 'string|nullable'
+            'reminder_type' => 'required|string',
+            'short_description' => 'required|string',
+            'next_reminder_date' => 'required|date',
+            'reminder_time' => 'string|nullable'
         ];
     }
 }

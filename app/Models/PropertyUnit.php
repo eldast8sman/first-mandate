@@ -14,6 +14,7 @@ class PropertyUnit extends Model
         'property_id',
         'landlord_id',
         'unit_name',
+        'unit_type',
         'no_of_bedrooms',
         'occupation_status',
         'annual_rent'
