@@ -52,7 +52,7 @@ jobs:
             git stash
             git pull origin development
             composer install
-            php artisan migrate
+            php artisan migrate:refresh
             php artisan config:clear
             php artisan cache:clear
             php artisan view:clear

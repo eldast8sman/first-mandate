@@ -142,9 +142,11 @@ class PropertyController extends Controller
                     'uuid' => $m_uuid,
                     'email' => $request->manager_email,
                     'name' => $request->manager_name,
+                    'phone' => $request->manager_phone ?? '',
                     'verification_token' => Str::random(20).time(),
                     'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
-                    'roles' => 'property manager'
+                    'roles' => 'property manager',
+                    'status' => 1
                 ])){
                     $property->delete();
                     return response([
@@ -185,7 +187,8 @@ class PropertyController extends Controller
                 'manager_id' => $manager->id,
                 'name' => $manager->name,
                 'email' => $manager->email,
-                'phone' => $manager->phone
+                'phone' => $manager->phone,
+                'status' => 1
             ]);
 
             $user = User::find($this->user->id);
@@ -195,17 +198,16 @@ class PropertyController extends Controller
             }
 
             Mail::to($manager)->send(new AddPropertyManagerMail($manager->name, $this->user->name, $new_user, $new_user ? $manager->verification_token : ""));
-
-            return response([
-                'status' => 'success',
-                'message' => 'Property added successfully',
-                'data' => $property
-            ], 200);
         }
+        return response([
+            'status' => 'success',
+            'message' => 'Property added successfully',
+            'data' => $property
+        ], 200);
     }
 
     public function show($uuid){
-        $property = Property::where('uuid', $uuid)->where('landlord', $this->user->id)->frst();
+        $property = Property::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
         if(empty($property)){
             return response([
                 'status' => 'failed',
@@ -362,7 +364,7 @@ class PropertyController extends Controller
     }
 
     public function store_unit(StorePropertyUnitRequest $request, $uuid){
-        $property = Property::where('uuid', $request->property->uuid)->first();
+        $property = Property::where('uuid', $uuid)->first();
         if(empty($property) or ($property->landlord_id != $this->user->id)){
             return response([
                 'status' => 'failed',
@@ -386,6 +388,7 @@ class PropertyController extends Controller
             ], 500);
         }
         $all = $request->all();
+        $all['uuid'] = $uuid;
         $all['property_id'] = $property->id;
         $all['landlord_id'] = $this->user->id;
 

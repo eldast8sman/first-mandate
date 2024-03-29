@@ -11,7 +11,7 @@ class StorePropertyRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -26,8 +26,7 @@ class StorePropertyRequest extends FormRequest
             'address' => 'required|string',
             'city' => 'required|string',
             'state' => 'required|string',
-            'manager_first_name' => 'required_with:manager_email|string',
-            'manager_last_name' => 'required_with:manager_email|string',
+            'manager_name' => 'required_with:manager_email|string',
             'manager_email' => 'string|email|nullable',
             'manager_phone' => 'string|nullable'
         ];
