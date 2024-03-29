@@ -187,7 +187,7 @@ class PropertyController extends Controller
                 'manager_id' => $manager->id,
                 'name' => $manager->name,
                 'email' => $manager->email,
-                'phone' => $manager->phone,
+                'phone' => !empty($manager->phone) ? (string)$manager->phone : "",
                 'status' => 1
             ]);
 
