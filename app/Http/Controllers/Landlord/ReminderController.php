@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Landlord\StoreReminderRequest;
 use App\Models\Reminder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ReminderController extends Controller
 {
@@ -19,11 +20,28 @@ class ReminderController extends Controller
     }
 
     public function store(StoreReminderRequest $request){
+        $uuid = "";
+        for($i=1; $i<=40; $i++){
+            $t_uuid = Str::uuid();
+            if(Reminder::where('uuid', $t_uuid)->count() < 1){
+                $uuid = $t_uuid;
+                break;
+            } else {
+                continue;
+            }
+        }
+        if(empty($uuid)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Reminder addition failed. Please try again later'
+            ], 500);
+        }
         $all = $request->all();
+        $all['uuid'] = $uuid;
         $all['user_type'] = 'landlord';
         $all['user_id'] = $this->user->id;
         $all['recipient_type'] = 'landlord';
-        $all['recipient_type'] = $this->user->id;
+        $all['recipient_id'] = $this->user->id;
         $all['frequency_type'] = 'one_time';
 
         if(!$reminder = Reminder::create($all)){

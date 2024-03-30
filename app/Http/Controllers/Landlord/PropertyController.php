@@ -223,7 +223,7 @@ class PropertyController extends Controller
     }
 
     public function store_manager(StorePropertyManagerRequest $request){
-        $property = Property::where('uuid', $request->property->uuid)->first();
+        $property = Property::where('uuid', $request->property_uuid)->first();
         if(empty($property) or ($property->landlord_id != $this->user->id)){
             return response([
                 'status' => 'failed',
@@ -232,7 +232,7 @@ class PropertyController extends Controller
         }
 
         if(!empty($request->email)){
-            if(Property::where('email', $request->email)->where('property_id', $property->id)->count() > 0){
+            if(PropertyManager::where('email', $request->email)->where('property_id', $property->id)->count() > 0){
                 return response([
                     'status' => 'failed',
                     'message' => 'This person already manages this Property'
@@ -302,7 +302,9 @@ class PropertyController extends Controller
             'landlord_id' => $this->user->id,
             'manager_id' => $user->id,
             'name' => $request->name,
-            'phone' => !empty($request->phone) ? $request->phone : ""
+            'phone' => !empty($request->phone) ? $request->phone : "",
+            "email" => $request->email,
+            "status" => 1
         ]);
 
         Mail::to($user)->send(new AddPropertyManagerMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
@@ -443,6 +445,7 @@ class PropertyController extends Controller
                 $user = User::create([
                     'name' => $request->name,
                     'email' => $request->email,
+                    'phone' => !empty($request->phone) ? $request->phone : "",
                     'verification_token' => Str::random(20).time(),
                     'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
                     'roles' => 'tenant',
@@ -482,7 +485,7 @@ class PropertyController extends Controller
             ], 500);
         }
 
-        $within = PropertyTenant::where('property_unit_id', $request->property_unit_id);
+        $within = PropertyTenant::where('property_unit_id', $unit->id);
         if($within->where('lease_start', '<=', $request->lease_start)->where('lease_end', '>=', $request->lease_start)->count() > 0){
             return request([
                 'status' => 'failed',
@@ -495,7 +498,7 @@ class PropertyController extends Controller
                 'message' => 'The tenancy period is overlapping that of another Tenant'
             ], 409);
         }
-        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->scount() > 0){
+        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->count() > 0){
             return request([
                 'status' => 'failed',
                 'message' => 'The tenancy period is overlapping that of another Tenant'
@@ -586,23 +589,23 @@ class PropertyController extends Controller
             ], 409);
         }
 
-        $within = PropertyTenant::where('property_unit_id', $request->property_unit_id);
+        $within = PropertyTenant::where('property_unit_id', $tenant->property_unit_id);
         if($within->where('lease_start', '<=', $request->lease_start)->where('lease_end', '>=', $request->lease_start)->where('id', '<>', $tenant->id)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
-                'message' => 'The tenancy period is overlapping that of another Tenant'
+                'message' => 'The tenancy period is overlapping that of another Tenant1'
             ], 409);
         }
         if($within->where('lease_start', '<=', $request->lease_end)->where('lease_end', '>=', $request->lease_end)->where('id', '<>', $tenant->id)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
-                'message' => 'The tenancy period is overlapping that of another Tenant'
+                'message' => 'The tenancy period is overlapping that of another Tenant2'
             ], 409);
         }
-        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->where('id', '<>', $tenant->id)->scount() > 0){
-            return request([
+        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->where('id', '<>', $tenant->id)->count() > 0){
+            return response([
                 'status' => 'failed',
-                'message' => 'The tenancy period is overlapping that of another Tenant'
+                'message' => 'The tenancy period is overlapping that of another Tenant3'
             ], 409);
         }
 
