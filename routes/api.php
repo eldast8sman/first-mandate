@@ -40,9 +40,8 @@ Route::middleware('auth:user-api')->group(function(){
         Route::get('/property-managers', 'property_managers')->name('landlord.propertyManager.index');
         Route::get('/property-managers/{uuid}', 'property_manager')->name('landlord.propertyManager.show');
         Route::post('/properties/{uuid}/units', 'store_unit')->name('lanldord.property.unit.store');
-        Route::post('/properties-units/{uuid}/tenants', 'store_tenant')->name('landord.propertyUnit.tenant.store');
+        Route::post('/property-units/{uuid}/tenants', 'store_tenant')->name('landord.propertyUnit.tenant.store');
         Route::get('/tenants', 'tenants')->name('property.tenant.index');
-        Route::post('/properties/{uuid}/units', 'store_unit')->name('property.unit.store');
         Route::put('/property-managers/{uuid}', 'update_manager')->name('property.manager.update');
         Route::put('/tenants/{uuid}', 'update_tenant')->name('property.tenant.update');
     });

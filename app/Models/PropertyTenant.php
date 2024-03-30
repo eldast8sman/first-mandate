@@ -19,7 +19,7 @@ class PropertyTenant extends Model
         'email',
         'phone',
         'current_tenant',
-        'lease_state',
+        'lease_start',
         'lease_end',
         'rent_term',
         'rent_amount',
