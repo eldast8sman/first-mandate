@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Landlord\PropertyController;
 use App\Http\Controllers\Landlord\ReminderController;
+use App\Http\Controllers\Tenant\ApartmentController;
+use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use PharIo\Manifest\AuthorCollection;
@@ -23,6 +25,7 @@ Route::controller(AuthController::class)->group(function(){
     Route::post('/login', 'login')->name('user.login');
     Route::post('/activate', 'activate_account')->name('user.activateAccount');
     Route::get('/resend-activation-link', 'resend_activation_link')->name('user.resendAtivationLink');
+    Route::post('/activate-from-addition', 'activate_from_addition')->name('user.activateFromAddition');
     Route::post('/forgot-password', 'forgot_password')->name('user.forgotPassword');
     Route::post('/reset-password', 'reset_password')->name('user.resetPassword');
 });
@@ -52,5 +55,20 @@ Route::middleware('auth:user-api')->group(function(){
         Route::get('/reminders/{uuid}', 'show')->name('landlord.reminder.show');
         Route::put('/reminders/{uuid}', 'update')->name('landlord.reminder.update');
         Route::delete('/reminders/{uuid}', 'destroy')->name("landlord.reminder.delete");
+    });
+
+    Route::prefix('tenant')->group(function(){
+        Route::controller(ApartmentController::class)->group(function(){
+            Route::get('/apartments', 'index')->name('tenant.apartment.index');
+            Route::post('/apartments', 'store')->name('tenant.apartment.store');
+        });
+
+        Route::controller(TenantReminderController::class)->group(function(){
+            Route::post('/reminders', 'store')->name('tenant.reminder.store');
+            Route::get('/reminders', 'index')->name('tenant.reminder.index');
+            Route::get('/reminders/{uuid}', 'show')->name('tenant.reminder.show');
+            Route::put('/reminders/{uuid}', 'update')->name('tenant.reminder.update');
+            Route::delete('/reminders/{uuid}', 'destroy')->name("tenant.reminder.delete");
+        });
     });
 });

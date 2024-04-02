@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\Landlord;
+namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Landlord\StoreReminderRequest;
+use App\Http\Requests\Tenant\StoreReminderRequest;
 use App\Models\Reminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -38,9 +38,9 @@ class ReminderController extends Controller
         }
         $all = $request->all();
         $all['uuid'] = $uuid;
-        $all['user_type'] = 'landlord';
+        $all['user_type'] = 'tenant';
         $all['user_id'] = $this->user->id;
-        $all['recipient_type'] = 'landlord';
+        $all['recipient_type'] = 'tenant';
         $all['recipient_id'] = $this->user->id;
         $all['frequency_type'] = 'one_time';
 
@@ -60,7 +60,7 @@ class ReminderController extends Controller
 
     public function index(){
         $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
-        $reminders = Reminder::where('recipient_type', 'landlord')->where('recipient_id', $this->user->id)->orderBy('next_reminder_date', 'desc');
+        $reminders = Reminder::where('recipient_type', 'tenant')->where('recipient_id', $this->user->id)->orderBy('next_reminder_date', 'desc');
         if($reminders->count() < 1){
             return response([
                 'status' => 'failed',
@@ -79,7 +79,7 @@ class ReminderController extends Controller
     }
 
     public function show($uuid){
-        $reminder = Reminder::where('uuid', $uuid)->where('recipient_type', 'landlord')->where('recipient_id', $this->user->id)->first();
+        $reminder = Reminder::where('uuid', $uuid)->where('recipient_type', 'tenant')->where('recipient_id', $this->user->id)->first();
         if(empty($reminder)){
             return response([
                 'status' => 'failed',
@@ -95,7 +95,7 @@ class ReminderController extends Controller
     }
 
     public function update(StoreReminderRequest $request, $uuid){
-        $reminder = Reminder::where('uuid', $uuid)->where('recipient_type', 'landlord')->where('recipient_id', $this->user->id)->first();
+        $reminder = Reminder::where('uuid', $uuid)->where('recipient_type', 'tenant')->where('recipient_id', $this->user->id)->first();
         if(empty($reminder)){
             return response([
                 'status' => 'failed',
@@ -118,7 +118,7 @@ class ReminderController extends Controller
     }
 
     public function destroy($uuid){
-        $reminder = Reminder::where('uuid', $uuid)->where('recipient_type', 'landlord')->where('recipient_id', $this->user->id)->first();
+        $reminder = Reminder::where('uuid', $uuid)->where('recipient_type', 'tenant')->where('recipient_id', $this->user->id)->first();
         if(empty($reminder)){
             return response([
                 'status' => 'failed',
