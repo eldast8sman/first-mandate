@@ -487,19 +487,19 @@ class PropertyController extends Controller
 
         $within = PropertyTenant::where('property_unit_id', $unit->id);
         if($within->where('lease_start', '<=', $request->lease_start)->where('lease_end', '>=', $request->lease_start)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
                 'message' => 'The tenancy period is overlapping that of another Tenant'
             ], 409);
         }
         if($within->where('lease_start', '<=', $request->lease_end)->where('lease_end', '>=', $request->lease_end)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
                 'message' => 'The tenancy period is overlapping that of another Tenant'
             ], 409);
         }
         if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
                 'message' => 'The tenancy period is overlapping that of another Tenant'
             ], 409);
