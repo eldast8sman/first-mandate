@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Landlord;
+namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Landlord\StorePropertyManagerRequest;
-use App\Http\Requests\Landlord\StorePropertyRequest;
-use App\Http\Requests\Landlord\StorePropertyTenantRequest;
-use App\Http\Requests\Landlord\StorePropertyUnitRequest;
-use App\Mail\AddPropertyManagerMail;
-use App\Mail\AddTenantMail;
+use App\Http\Requests\Manager\StoreLandlordRequest;
+use App\Http\Requests\Manager\StorePropertyRequest;
+use App\Http\Requests\Manager\StorePropertyTenantRequest;
+use App\Http\Requests\Manager\StorePropertyUnitRequest;
+use App\Mail\AddPropertyLandlordMail;
+use App\Mail\ManagerAddTenantMail;
 use App\Models\DueDate;
 use App\Models\Property;
 use App\Models\PropertyManager;
@@ -32,15 +32,7 @@ class PropertyController extends Controller
 
     public static function property(Property $property) : Property
     {
-        $prop_managers = [];
-        $managers = PropertyManager::where('property_id', $property->id)->get();
-        if(!empty($managers)){
-            foreach($managers as $manager){
-                unset($manager->id);
-                $prop_managers[] = $manager;
-            }
-        }
-        $property->property_managers = $prop_managers;
+        $property->landlord = User::where('id', $property->id)->first(['name', 'email', 'phone']);
         $units = PropertyUnit::where('property_id', $property->id)->get();
         if(!empty($units)){
             foreach($units as $unit){
@@ -48,7 +40,6 @@ class PropertyController extends Controller
             }
         }
         $property->units = $units;
-        
         return $property;
     }
 
@@ -60,28 +51,34 @@ class PropertyController extends Controller
         return $unit;
     }
 
-    public static function manager(PropertyManager $manager) : PropertyManager {
-        $property = Property::find($manager->property_id);
-        $manager->property = $property;
-        
-        return $manager;
-    }
-
-    public static function tenant(PropertyTenant $tenant) : PropertyTenant {
-        $property = Property::find($tenant->property_id);
-        $tenant->property = $property;
+    public static function tenant(PropertyTenant $tenant) : PropertyTenant
+    {
+        $tenant->property = Property::find($tenant->property_id);
         $tenant->property_unit = PropertyUnit::find($tenant->property_unit_id);
         return $tenant;
     }
 
     public function index(){
         $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
-        
-        $properties = Property::where('landlord_id', $this->user->id)->paginate($limit);
-        if(!empty($properties)){
-            foreach($properties as $property){
-                $property = self::property($property);
+        $page = !empty($_GET['page']) ? (int)$_GET['page'] : 1;
+
+        $properties = [];
+        $managers = PropertyManager::where('manager_id', $this->user->id)->orderBy('created_at', 'desc')->get();
+        if(!empty($managers)){
+            foreach($managers as $manager){
+                $properties[] = Property::find($manager->property_id);
             }
+        }
+        if(empty($properties)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property has been added yet'
+            ], 200);
+        }
+
+        $properties = self::paginate_array($properties, $limit, $page);
+        foreach($properties as $property){
+            $property = self::property($property);
         }
 
         return response([
@@ -92,7 +89,7 @@ class PropertyController extends Controller
     }
 
     public function store(StorePropertyRequest $request){
-        $all = $request->except(['manager_name', 'manager_email', 'manager_phone']);
+        $all = $request->except(['landlord_name', 'landlord_email', 'landlord_phone']);
         $uuid = "";
         for($i=1; $i<=40; $i++){
             $temp_uuid = Str::uuid();
@@ -111,7 +108,6 @@ class PropertyController extends Controller
         }
 
         $all['uuid'] = $uuid;
-        $all['landlord_id'] = $this->user->id;
         if(!$property = Property::create($all)){
             return response([
                 'status' => 'failed',
@@ -119,19 +115,19 @@ class PropertyController extends Controller
             ], 500);
         }
 
-        if(!empty($request->manager_email)){
-            if(empty($manager = User::where('email', $request->manager_email)->first())){
-                $m_uuid = "";
+        if(!empty($request->landlord_email)){
+            if(empty($landlord = User::where('email', $request->landlord_email)->first())){
+                $l_uuid = "";
                 for($i=1; $i<=40; $i++){
                     $t_uuid = Str::uuid();
                     if(User::where('uuid', $t_uuid)->count() < 1){
-                        $m_uuid = $t_uuid;
+                        $l_uuid = $t_uuid;
                         break;
                     } else {
                         continue;
                     }
                 }
-                if(empty($m_uuid)){
+                if(empty($l_uuid)){
                     $property->delete();
 
                     return response([
@@ -139,14 +135,14 @@ class PropertyController extends Controller
                         'message' => 'Property Upload could not be completed. Please try again later'
                     ], 500);
                 }
-                if(!$manager = User::create([
-                    'uuid' => $m_uuid,
-                    'email' => $request->manager_email,
-                    'name' => $request->manager_name,
-                    'phone' => $request->manager_phone ?? '',
+                if(!$landlord = User::create([
+                    'uuid' => $l_uuid,
+                    'email' => $request->landlord_email,
+                    'name' => $request->landlord_name,
+                    'phone' => $request->landlord_phone ?? '',
                     'verification_token' => Str::random(20).time(),
                     'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
-                    'roles' => 'property manager',
+                    'roles' => 'landlord',
                     'status' => 1
                 ])){
                     $property->delete();
@@ -157,50 +153,55 @@ class PropertyController extends Controller
                 }
 
                 $new_user = true;
-            } else {                
-                if(!str_contains($manager->roles, 'property manager')){
-                    $manager->roles = !empty($manager->roles) ? $manager->roles.',property manager' : 'property manager';
-                    $manager->save();
+            } else {
+                if(!str_contains($landlord->roles, 'landlord')){
+                    $landlord->roles = !empty($landlord->roles) ? $landlord->roles.',landlord' : 'landlord';
+                    $landlord->save();
                 }
+
                 $new_user = false;
             }
+            $property->landlord_id = $landlord->id;
+            $property->save();
 
-            $tuuid = "";
-            for($i=1; $i<=40; $i++){
-                $t_uuid = Str::uuid();
-                if(PropertyManager::where('uuid', $t_uuid)->count() < 1){
-                    $tuuid = $t_uuid;
-                    break;
-                } else {
-                    continue;
-                }
-            }
-            if(empty($tuuid)){
-                $property->delete();
-                return response([
-                    'status' => 'failed',
-                    'message' => 'Property Upload could not be completed. Please try again later'
-                ], 500);
-            }
-            PropertyManager::create([
-                'uuid' => $tuuid,
-                'property_id' => $property->id,
-                'landlord_id' => $this->user->id,
-                'manager_id' => $manager->id,
-                'name' => $manager->name,
-                'email' => $manager->email,
-                'phone' => !empty($manager->phone) ? (string)$manager->phone : "",
-                'status' => 1
-            ]);
-
-            Mail::to($manager)->send(new AddPropertyManagerMail($manager->name, $this->user->name, $new_user, $new_user ? $manager->verification_token : ""));
+            Mail::to($landlord)->send(new AddPropertyLandlordMail($landlord->name, $this->user->name, $new_user, $new_user ? $landlord->verification_token : ""));
         }
+
+        $p_uuid = "";
+        for($i=1; $i<=40; $i++){
+            $t_uuid = Str::uuid();
+            if(PropertyManager::where('uuid', $t_uuid)->count() < 1){
+                $p_uuid = $t_uuid;
+                break;
+            } else {
+                continue;
+            }
+        }  
+
+        if(empty($p_uuid)){
+            $property->delete();
+            return response([
+                'status' => 'failed',
+                'message' => 'Property Upload could not be completed. Please try again later'
+            ], 500);
+        }      
+        PropertyManager::create([
+            'uuid' => $p_uuid,
+            'property_id' => $property->id,
+            'landlord_id' => (isset($landlord) and !empty($landlord)) ? $landlord->id : NULL,
+            'manager_id' => $this->user->id,
+            'name' => $this->user->name,
+            'email' => $this->user->email,
+            'phone' => !empty($this->user->phone) ? (string)$this->user->phone : "",
+            'status' => 1
+        ]);
 
         $user = User::find($this->user->id);
-        if(!str_contains($user->roles, 'landlord')){
-            $user->roles = !empty($user->roles) ? $user->roles.',landord' : 'landlord';
+        if(!str_contains($user->roles, 'property manager')){
+            $user->roles = !empty($user->roles) ? $user->roles.',property manager' : 'property manager';
             $user->save();
         }
+
         return response([
             'status' => 'success',
             'message' => 'Property added successfully',
@@ -208,168 +209,9 @@ class PropertyController extends Controller
         ], 200);
     }
 
-    public function show($uuid){
-        $property = Property::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
-        if(empty($property)){
-            return response([
-                'status' => 'failed',
-                'message' => 'No Property was fetched'
-            ], 404);
-        }
-
-        return response([
-            'status' => 'success',
-            'message' => 'Property fetched successfully',
-            'data' => self::property($property)
-        ], 200);
-    }
-
-    public function store_manager(StorePropertyManagerRequest $request){
-        $property = Property::where('uuid', $request->property_uuid)->first();
-        if(empty($property) or ($property->landlord_id != $this->user->id)){
-            return response([
-                'status' => 'failed',
-                'message' => 'No Property was fetched'
-            ], 404);
-        }
-
-        if(!empty($request->email)){
-            if(PropertyManager::where('email', $request->email)->where('property_id', $property->id)->count() > 0){
-                return response([
-                    'status' => 'failed',
-                    'message' => 'This person already manages this Property'
-                ], 409);
-            }
-        }
-
-        if(empty($user = User::where('email', $request->email)->first())){
-            $uuid = "";
-            for($i=1; $i<=40; $i++){
-                $temp_uuid = Str::uuid();
-                if(Property::where('uuid', $temp_uuid)->count() < 1){
-                    $uuid = $temp_uuid;
-                    break;
-                } else {
-                    continue;
-                }
-            }
-            if(empty($uuid)){
-                return response([
-                    'status' => 'failed',
-                    'message' => 'There was an error addng Property. Please try again later'
-                ], 500);
-            }
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'verification_token' => Str::random(20).time(),
-                'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
-                'roles' => 'property manager',
-                'uuid' => $uuid
-            ]);
-            if(!$user){
-                return response([
-                    'status' => 'failed',
-                    'message' => 'Property Manager was not added as a User. Please try again later'
-                ], 500);
-            }
-
-            $new_user = true;
-        } else {
-            if(!str_contains($user->roles, 'property manager')){
-                $user->roles = !empty($user->roles) ?  $user->roles.',property manager' : 'property manager';
-                $user->save();
-            }
-            $new_user = false;
-        }
-        $tuuid = "";
-        for($i=1; $i<=40; $i++){
-            $t_uuid = Str::uuid();
-            if(PropertyManager::where('uuid', $t_uuid)->count() < 1){
-                $tuuid = $t_uuid;
-                break;
-            } else {
-                continue;
-            }
-        }
-        if(empty($tuuid)){
-            return response([
-                'status' => 'failed',
-                'message' => 'Property Manager addition failed.'
-            ], 500);
-        }
-        $manager = PropertyManager::create([
-            'uuid' => $tuuid,
-            'property_id' => $property->id,
-            'landlord_id' => $this->user->id,
-            'manager_id' => $user->id,
-            'name' => $request->name,
-            'phone' => !empty($request->phone) ? $request->phone : "",
-            "email" => $request->email,
-            "status" => 1
-        ]);
-
-        Mail::to($user)->send(new AddPropertyManagerMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
-
-        return response([
-            'status' => 'success',
-            'message' => 'Property Manager added successfully',
-            'data' => $manager
-        ], 200);
-    }
-
-    public function property_managers(){
-        $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
-        $managers = PropertyManager::where('landlord_id', $this->user->id)->orderBy('property_id', 'asc')->orderBy('name', 'asc')->paginate($limit);
-        if(!empty($managers)){
-            foreach($managers as $manager){
-                $manager = self::manager($manager);
-            }
-        }
-
-        return response([
-            'status' => 'success',
-            'message' => 'Property Managers fetched successfully',
-            'data' => $managers
-        ], 200);
-    }
-
-    public function property_manager($uuid){
-        $manager = PropertyManager::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
-        if(empty($manager)){
-            return response([
-                'status' => 'failed',
-                'message' => 'No Property Manager was fetched',
-                'data' => $manager
-            ], 200);
-        }
-
-        return response([
-            'status' => 'success',
-            'message' => 'Property Manager fetched successfully',
-            'data' => self::manager($manager)
-        ], 200);
-    }
-
-    public function tenants(){
-        $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
-        $tenants = PropertyTenant::where('landlord_id', $this->user->id)->orderBy('property_id', 'asc')->orderBy('name', 'asc')->paginate($limit);
-        if(!empty($tenants)){
-            foreach($tenants as $tenant){
-                $tenant = self::tenant($tenant);
-            }
-        }
-
-        return response([
-            'status' => 'success',
-            'message' => 'Tenants fetched successfully',
-            'data' => $tenants
-        ], 200);
-    }
-
     public function store_unit(StorePropertyUnitRequest $request, $uuid){
         $property = Property::where('uuid', $uuid)->first();
-        if(empty($property) or ($property->landlord_id != $this->user->id)){
+        if(empty($property) or (PropertyManager::where('manager_id', $this->user->id)->where('property_id', $property->id)->count() < 1)){
             return response([
                 'status' => 'failed',
                 'message' => 'No Property was fetched'
@@ -394,7 +236,7 @@ class PropertyController extends Controller
         $all = $request->all();
         $all['uuid'] = $uuid;
         $all['property_id'] = $property->id;
-        $all['landlord_id'] = $this->user->id;
+        $all['landlord_id'] = $property->landlord_id;
 
         if(!$unit = PropertyUnit::create($all)){
             return response([
@@ -514,9 +356,10 @@ class PropertyController extends Controller
         if(($today >= $request->lease_start) and ($today <= $request->lease_end)){
             $current = true;
         }
+
         $all['current_tenant'] = $current;
         $all['user_id'] = isset($user) ? $user->id : null;
-        $all['landlord_id'] = $this->user->id;
+        $all['landlord_id'] = $unit->landlord_id;
         $all['property_id'] = $unit->property_id;
         $all['property_unit_id'] = $unit->id;
         if(isset($all['no_of_installments']) and ($all['no_of_installments'] > 1)){
@@ -543,9 +386,7 @@ class PropertyController extends Controller
             ]);
         }
 
-        if(!empty($request->email)){
-            Mail::to($user)->send(new AddTenantMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
-        }
+        Mail::to($user)->send(new ManagerAddTenantMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
 
         return response([
             'status' => 'success',
@@ -554,33 +395,117 @@ class PropertyController extends Controller
         ], 200);
     }
 
-    public function update_manager(StorePropertyManagerRequest $request, $uuid){
-        $manager = PropertyManager::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
-        if(empty($manager)){
+    public function tenants(){
+        $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
+        $page = !empty($_GET['page']) ? (int)$_GET['page'] : 1;
+
+        $tenants = [];
+        $properties = [];
+        $managers = PropertyManager::where('user_id', $this->user->id)->orderBy('created_at', 'desc')->get();
+        if(!empty($managers)){
+            foreach($managers as $manager){
+                $properties[] = Property::find($manager->property_id);
+            }
+        }
+        foreach($properties as $property){
+            $tenancies = PropertyTenant::where('property_id', $property->id)->where('current_tenant', 1)->orderBy('name', 'asc')->get();
+            foreach($tenancies as $tenancy){
+                $tenants[] = $tenancy;
+            }
+        }
+        if(empty($tenants)){
             return response([
                 'status' => 'failed',
-                'message' => 'No Manager was fetched'
-            ]);
+                'message' => 'No Tenant has been added',
+                'data' => []
+            ], 200);
         }
 
-        $all = $request->all();
-        if(!$manager->update($all)){
-            return response([
-                'status' => 'failed',
-                'message' => 'Failed to update Manager'
-            ], 500);
+        $tenants = self::paginate_array($tenants, $limit, $page);
+        foreach($tenants as $tenant){
+            $tenant = self::tenant($tenant);
         }
 
         return response([
             'status' => 'success',
-            'message' => 'Property Manager updated successfully',
-            'data' => $manager
+            'message' => 'Tenants successfully fetched',
+            'data' => $tenants
+        ], 200);
+    }
+
+    public function store_landlord(StoreLandlordRequest $request){
+        $property = Property::where('uuid', $request->property_uuid)->first();
+        if(empty($proprty) or (empty(PropertyManager::where('property_id', $property->id)->where('manager_id', $this->user->id)->first()))){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property was fetched'
+            ], 404);
+        }
+        if(!empty($property->landlord_id)){
+            return response([
+                'status' => 'failed',
+                'message' => 'This Property already has a Landlord'
+            ], 409);
+        }
+
+        if(empty($landlord = User::where('email', $request->email)->first())){
+            $l_uuid = "";
+            for($i=1; $i<=40; $i++){
+                $t_uuid = Str::uuid();
+                if(User::where('uuid', $t_uuid)->count() < 1){
+                    $l_uuid = $t_uuid;
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            if(empty($l_uuid)){
+
+                return response([
+                    'status' => 'failed',
+                    'message' => 'Property Upload could not be completed. Please try again later'
+                ], 500);
+            }
+            if(!$landlord = User::create([
+                'uuid' => $l_uuid,
+                'email' => $request->landlord_email,
+                'name' => $request->landord_name,
+                'phone' => $request->landlord_phone ?? '',
+                'verification_token' => Str::random(20).time(),
+                'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
+                'roles' => 'landlord',
+                'status' => 1
+            ])){
+                return response([
+                    'status' => 'failed',
+                    'message' => 'Property upload failed. Please try again later'
+                ], 500);
+            }
+
+            $new_user = true;
+        } else {
+            if(!str_contains($landlord->roles, 'landlord')){
+                $landlord->roles = !empty($landlord->roles) ? $landlord->roles.',landlord' : 'landlord';
+                $landlord->save();
+            }
+
+            $new_user = false;
+        }
+        $property->landlord_id = $landlord->id;
+        $property->save();
+
+        Mail::to($landlord)->send(new AddPropertyLandlordMail($landlord->name, $this->user->name, $new_user, $new_user ? $landlord->verification_token : ""));
+
+        return response([
+            'status' => 'success',
+            'message' => 'Landlord added successfully',
+            'data' => self::property($property)
         ], 200);
     }
 
     public function update_tenant(StorePropertyTenantRequest $request, $uuid){
-        $tenant = PropertyTenant::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
-        if(empty($tenant)){
+        $tenant = PropertyTenant::where('uuid', $uuid)->first();
+        if(empty($tenant) or empty(PropertyManager::where('manager_id', $this->user->id)->where('property_id', $tenant->property_id)->first())){
             return response([
                 'status' => 'failed',
                 'message' => 'No Tenant was fetched'
