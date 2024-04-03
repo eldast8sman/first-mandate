@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Landlord\PropertyController;
 use App\Http\Controllers\Landlord\ReminderController;
+use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
 use App\Http\Controllers\Tenant\ApartmentController;
 use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
 use Illuminate\Http\Request;
@@ -69,6 +70,18 @@ Route::middleware('auth:user-api')->group(function(){
             Route::get('/reminders/{uuid}', 'show')->name('tenant.reminder.show');
             Route::put('/reminders/{uuid}', 'update')->name('tenant.reminder.update');
             Route::delete('/reminders/{uuid}', 'destroy')->name("tenant.reminder.delete");
+        });
+    });
+
+    Route::prefix('property-manager')->group(function(){
+        Route::controller(ManagerPropertyController::class)->group(function(){
+            Route::get('/properties', 'index')->name('manager,property.index');
+            Route::post('/properties', 'store')->name('manager.propery.store');
+            Route::post('/properties/{uuid}/units', 'store_unit')->name('manager.propertyUnit.store');
+            Route::post('/property-units/{uuid}/tenants', 'store_tenant')->name('manager.propertyTenant.store');
+            Route::get('/property-tenants', 'tenants')->name('manager.tenants.index');
+            Route::put('/property-tenants/{uuid}', 'update_tenant')->name('manager.propertyTenant.update');
+            Route::post('/landlords', 'store_landlord')->name('manager.landlord.store');
         });
     });
 });
