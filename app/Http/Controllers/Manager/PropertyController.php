@@ -254,7 +254,7 @@ class PropertyController extends Controller
 
     public function store_tenant(StorePropertyTenantRequest $request, $uuid){
         $unit = PropertyUnit::where('uuid', $uuid)->first();
-        if(empty($unit) or ($unit->landlord_id != $this->user->id)){
+        if(empty($unit) or (PropertyManager::where('manager_id', $this->user->id)->where('property_id', $unit->property_id)->count() < 1)){
             return response([
                 'status' => 'failed',
                 'message' => 'No Property Unit was fetched'
@@ -401,7 +401,7 @@ class PropertyController extends Controller
 
         $tenants = [];
         $properties = [];
-        $managers = PropertyManager::where('user_id', $this->user->id)->orderBy('created_at', 'desc')->get();
+        $managers = PropertyManager::where('manager_id', $this->user->id)->orderBy('created_at', 'desc')->get();
         if(!empty($managers)){
             foreach($managers as $manager){
                 $properties[] = Property::find($manager->property_id);
@@ -435,7 +435,8 @@ class PropertyController extends Controller
 
     public function store_landlord(StoreLandlordRequest $request){
         $property = Property::where('uuid', $request->property_uuid)->first();
-        if(empty($proprty) or (empty(PropertyManager::where('property_id', $property->id)->where('manager_id', $this->user->id)->first()))){
+        $manager = PropertyManager::where('property_id', $property->id)->where('manager_id', $this->user->id)->first();
+        if(empty($property) or empty($manager)){
             return response([
                 'status' => 'failed',
                 'message' => 'No Property was fetched'
@@ -468,9 +469,9 @@ class PropertyController extends Controller
             }
             if(!$landlord = User::create([
                 'uuid' => $l_uuid,
-                'email' => $request->landlord_email,
-                'name' => $request->landord_name,
-                'phone' => $request->landlord_phone ?? '',
+                'email' => $request->email,
+                'name' => $request->name,
+                'phone' => $request->phone ?? '',
                 'verification_token' => Str::random(20).time(),
                 'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
                 'roles' => 'landlord',
@@ -493,6 +494,9 @@ class PropertyController extends Controller
         }
         $property->landlord_id = $landlord->id;
         $property->save();
+
+        $manager->landlord_id = $landlord->id;
+        $manager->save();
 
         Mail::to($landlord)->send(new AddPropertyLandlordMail($landlord->name, $this->user->name, $new_user, $new_user ? $landlord->verification_token : ""));
 
