@@ -25,7 +25,7 @@ class StoreLandlordRequest extends FormRequest
             'name' => 'required|string',
             'email' => 'required|string|email',
             'phone' => 'string|nullable',
-            'property_uuid' => 'required|string|exists:properties:uuid'
+            'property_uuid' => 'required|string|exists:properties,uuid'
         ];
     }
 }
