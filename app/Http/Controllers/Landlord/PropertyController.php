@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Landlord;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\NotificationController;
 use App\Http\Requests\Landlord\StorePropertyManagerRequest;
 use App\Http\Requests\Landlord\StorePropertyRequest;
 use App\Http\Requests\Landlord\StorePropertyTenantRequest;
@@ -119,6 +120,8 @@ class PropertyController extends Controller
             ], 500);
         }
 
+        NoticeController::land_log_activity($this->user->id, "Added Property: {$property->title}", "properties", $property->uuid);
+
         if(!empty($request->manager_email)){
             if(empty($manager = User::where('email', $request->manager_email)->first())){
                 $m_uuid = "";
@@ -194,6 +197,8 @@ class PropertyController extends Controller
             ]);
 
             Mail::to($manager)->send(new AddPropertyManagerMail($manager->name, $this->user->name, $new_user, $new_user ? $manager->verification_token : ""));
+            NotificationController::store('manager', $manager->id, "Added as Property Manager", "You've just been added as the Prperty Manager to a Property, {$property->title}, owned by ".$this->user->name, "properties", $property->uuid);
+            NoticeController::land_log_activity($this->user->id, "Added Property Manager, {$manager->name}, to Property, {$property->title}", "properties", $property->uuid);
         }
 
         $user = User::find($this->user->id);
@@ -309,7 +314,11 @@ class PropertyController extends Controller
             "status" => 1
         ]);
 
+        NotificationController::store('manager', $user->id, "Added as Property Manager", "You've just been added as the Prperty Manager to a Property, {$property->name}, owned by ".$this->user->name, "properties", $property->uuid);
+
         Mail::to($user)->send(new AddPropertyManagerMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
+
+        NoticeController::land_log_activity($this->user->id, "Added Property Manager, {$manager->name}, to Property, {$property->title}", "properties", $property->uuid);
 
         return response([
             'status' => 'success',
@@ -403,6 +412,8 @@ class PropertyController extends Controller
             ], 500);
         }
 
+        NoticeController::land_log_activity($this->user->id, "Added a Unit, {$unit->unit_name} to Property, {$property->title}", "property_units", $unit->uuid);
+
         return response([
             'status' => 'success',
             'message' => 'Property Unit added successfully',
@@ -412,6 +423,7 @@ class PropertyController extends Controller
 
     public function store_tenant(StorePropertyTenantRequest $request, $uuid){
         $unit = PropertyUnit::where('uuid', $uuid)->first();
+        $property = Property::find($unit->property_id);
         if(empty($unit) or ($unit->landlord_id != $this->user->id)){
             return response([
                 'status' => 'failed',
@@ -513,6 +525,8 @@ class PropertyController extends Controller
         $all['uuid'] = $tuuid;
         if(($today >= $request->lease_start) and ($today <= $request->lease_end)){
             $current = true;
+            $unit->occupation_status = 'occupied';
+            $unit->save();
         }
         $all['current_tenant'] = $current;
         $all['user_id'] = isset($user) ? $user->id : null;
@@ -545,7 +559,10 @@ class PropertyController extends Controller
 
         if(!empty($request->email)){
             Mail::to($user)->send(new AddTenantMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
+            NotificationController::store('tenant', $user->id, 'Added as a Tenant', "You have been added as a Tenant to the Apartment ".$property->title." - ".$unit->unit_name." owned by {$this->user->name}", "apartments", $tenant->uuid);
         }
+
+        NoticeController::land_log_activity($this->user->id, "Added Tenant, {$tenant->name}, to Apartment. {$property->title} - {$unit->unit_name}", "tenants", $tenant->uuid);
 
         return response([
             'status' => 'success',
@@ -570,6 +587,8 @@ class PropertyController extends Controller
                 'message' => 'Failed to update Manager'
             ], 500);
         }
+
+        NoticeController::land_log_activity($this->user->id, "Edited Property Manager Details", "property_managers", $manager->uuid);
 
         return response([
             'status' => 'success',
@@ -618,6 +637,9 @@ class PropertyController extends Controller
         $all = $request->all();
         if(($today >= $request->lease_start) and ($today <= $request->lease_end)){
             $current = true;
+            $unit = PropertyUnit::find($tenant->property_unit_id);
+            $unit->occupation_status = 'occupied';
+            $unit->save();
         }
         $all['current'] = $current;
         if(isset($all['no_of_installments']) and ($all['no_of_installments'] > 1)){
@@ -650,6 +672,8 @@ class PropertyController extends Controller
                 ]);
             }
         }
+
+        NoticeController::land_log_activity($this->user->id, "Edited Tenant Details", "tenants", $tenant->uuid);
 
         return response([
             'status' => 'success',

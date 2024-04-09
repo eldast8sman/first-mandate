@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -20,5 +21,17 @@ class Controller extends BaseController
         $per_page = intval($per_page);
         $items = $array instanceof Collection ? $array : Collection::make($array);
         return new LengthAwarePaginator($items->forPage($page, $per_page), $items->count(), $per_page, $page, $options);
+    }
+
+    public static function log_activity($user_id, $section, $activity, $page="", $identifier=null){
+        ActivityLog::create([
+            'user_id' => $user_id,
+            'section' => $section,
+            'activity' => $activity,
+            'page' => $page,
+            'identifier' => $identifier
+        ]);
+
+        return true;
     }
 }

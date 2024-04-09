@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\NotificationController;
 use App\Http\Requests\Manager\SendNoticeRequest;
 use App\Mail\ManagerSendTenantNotice;
 use App\Models\Notice;
@@ -81,11 +82,17 @@ class NoticeController extends Controller
         }
 
         Mail::to($tenant)->send(new ManagerSendTenantNotice($tenant->name, $this->user->name, $notice->description));
+        NotificationController::store('tenant', $tenant->user_id, "Notice set to you", "Your manager, {$this->user->name}, just sent you a Notice", "notices", $notice->uuid);
+        self::land_log_activity($this->user->id, "You sent a Notice to your Tenant, {$tenant->name}", "notices", $notice->uuid);
 
         return response([
             'status' => 'success',
             'message' => 'Notice sent successfully',
             'data' => $notice
         ], 200);
+    }
+
+    public static function land_log_activity($user_id, $activity, $page="", $identifier=null){
+        self::log_activity($user_id, 'manager', $activity, $page, $identifier);
     }
 }

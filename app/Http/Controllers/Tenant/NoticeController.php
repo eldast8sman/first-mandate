@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\NotificationController;
 use App\Http\Requests\Tenant\AcknowledgeNoticeRequest;
 use App\Models\Notice;
 use App\Models\PropertyTenant;
@@ -97,11 +98,17 @@ class NoticeController extends Controller
             $notice->remarks = $request->remarks;
         }
         $notice->save();
+        NotificationController::store($notice->sender_type, $notice->sender_id, "Notice Feedback", "{$this->user->name} has given a feedback to the notice you sent", $notice->uuid);
+        self::land_log_activity($this->user->id, "Reacted to a Notice", "notices", $notice->uuid);
 
         return response([
             'status' => 'success',
             'message' => 'Notice Acknowledged successfully',
             'data' => $notice
         ], 200);
+    }
+
+    public static function land_log_activity($user_id, $activity, $page="", $identifier=null){
+        self::log_activity($user_id, 'tenant', $activity, $page, $identifier);
     }
 }

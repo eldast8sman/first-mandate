@@ -51,6 +51,8 @@ class ReminderController extends Controller
             ], 500);
         }
 
+        NoticeController::land_log_activity($this->user->id, "Added a Reminder", "reminders", $reminder->uuid);
+
         return response([
             'status' => 'success',
             'message' => 'Reminder added successfully',
@@ -110,6 +112,8 @@ class ReminderController extends Controller
             ], 500);
         }
 
+        NoticeController::land_log_activity($this->user->id, "Updated a Reminder", "reminders", $reminder->uuid);
+
         return response([
             'status' => 'success',
             'message' => 'Reminder Updated Successfully',
@@ -132,6 +136,8 @@ class ReminderController extends Controller
                 'message' => 'Failed to delete Reminder'
             ], 409);
         }
+
+        NoticeController::land_log_activity($this->user->id, "Reminder Deleted", "reminders");
 
         return response([
             'status' => 'success',
