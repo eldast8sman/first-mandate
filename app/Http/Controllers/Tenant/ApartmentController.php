@@ -167,6 +167,8 @@ class ApartmentController extends Controller
             ]);
         }
 
+        NoticeController::land_log_activity($this->user->id, "Added an Apartment: {$property->title} - {$unit->unit_name}", "apartments", $tenant->uuid);
+
         return response([
             'status' => 'success',
             'message' => 'Apartment created successfully',

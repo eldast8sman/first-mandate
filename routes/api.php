@@ -1,11 +1,15 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Landlord\NoticeController as LandlordNoticeController;
 use App\Http\Controllers\Landlord\PropertyController;
 use App\Http\Controllers\Landlord\ReminderController;
+use App\Http\Controllers\Manager\NoticeController;
 use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
 use App\Http\Controllers\Manager\ReminderController as ManagerReminderController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tenant\ApartmentController;
+use App\Http\Controllers\Tenant\NoticeController as TenantNoticeController;
 use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -53,10 +57,16 @@ Route::middleware('auth:user-api')->group(function(){
 
     Route::controller(ReminderController::class)->group(function(){
         Route::post('/reminders', 'store')->name('landlord.reminder.store');
+        Route::post('/tenants/{uuid}/send-reminder', 'send_reminder');
         Route::get('/reminders', 'index')->name('landlord.reminder.index');
         Route::get('/reminders/{uuid}', 'show')->name('landlord.reminder.show');
         Route::put('/reminders/{uuid}', 'update')->name('landlord.reminder.update');
         Route::delete('/reminders/{uuid}', 'destroy')->name("landlord.reminder.delete");
+    });
+
+    Route::controller(LandlordNoticeController::class)->group(function(){
+        Route::get('/notices', 'index');
+        Route::post('/notices', 'send_notice');
     });
 
     Route::prefix('tenant')->group(function(){
@@ -71,6 +81,12 @@ Route::middleware('auth:user-api')->group(function(){
             Route::get('/reminders/{uuid}', 'show')->name('tenant.reminder.show');
             Route::put('/reminders/{uuid}', 'update')->name('tenant.reminder.update');
             Route::delete('/reminders/{uuid}', 'destroy')->name("tenant.reminder.delete");
+        });
+
+        Route::controller(TenantNoticeController::class)->group(function(){
+            Route::get('/pending-notices', 'pending_notices');
+            Route::get('/all-notices', 'index');
+            Route::post('/notices/acknowledge', 'acknowledge_notice');
         });
     });
 
@@ -87,10 +103,24 @@ Route::middleware('auth:user-api')->group(function(){
 
         Route::controller(ManagerReminderController::class)->group(function(){
             Route::post('/reminders', 'store')->name('manager.reminder.store');
+            Route::post('/tenants/{uuid}/send-reminder', 'send_reminder');
             Route::get('/reminders', 'index')->name('manager.reminder.index');
             Route::get('/reminders/{uuid}', 'show')->name('manager.reminder.show');
             Route::put('/reminders/{uuid}', 'update')->name('manager.reminder.update');
             Route::delete('/reminders/{uuid}', 'destroy')->name("manager.reminder.delete");
         });
+
+        Route::controller(NoticeController::class)->group(function(){
+            Route::get('/notices', 'index');
+            Route::post('/notices', 'send_notice');
+        });
+    });
+
+    Route::controller(NotificationController::class)->group(function(){
+        Route::get('/notification-count', 'notification_count');
+        Route::get('/notifications', 'index');
+        Route::get('/notifications/{notification}/open', 'open');
+        Route::get('/notifications/mark-all-as-opened', 'mark_all_as_opened');
+        Route::get('/activity-logs', 'activity_logs');
     });
 });
