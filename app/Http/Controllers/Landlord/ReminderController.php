@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Landlord;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Landlord\StoreReminderRequest;
+use App\Models\PropertyTenant;
 use App\Models\Reminder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -113,6 +114,54 @@ class ReminderController extends Controller
         return response([
             'status' => 'success',
             'message' => 'Reminder Updated Successfully',
+            'data' => $reminder
+        ], 200);
+    }
+
+    public function send_reminder(StoreReminderRequest $request, $uuid){
+        $tenant = PropertyTenant::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
+        if(empty($tenant)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Tenant was fetched'
+            ], 404);
+        }
+
+        $uuid = "";
+        for($i=1; $i<=40; $i++){
+            $t_uuid = Str::uuid();
+            if(Reminder::where('uuid', $t_uuid)->count() < 1){
+                $uuid = $t_uuid;
+                break;
+            } else {
+                continue;
+            }
+        }
+        if(empty($uuid)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Reminder addition failed. Please try again later'
+            ], 500);
+        }
+
+        $all = $request->all();
+        $all['uuiid'] = $uuid;
+        $all['user_type'] = 'landlord';
+        $all['user_id'] = $this->user->id;
+        $all['recipient_type'] = 'tenant';
+        $all['recipient_id'] = $tenant->id;
+        $all['frequency_type'] = 'one_time';
+
+        if(!$reminder = Reminder::create($all)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Failed to send Reminder'
+            ], 500);
+        }
+
+        return response([
+            'status' => 'success',
+            'message' => 'Reminder sent successfully',
             'data' => $reminder
         ], 200);
     }
