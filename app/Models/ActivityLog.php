@@ -8,4 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class ActivityLog extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'section',
+        'activity',
+        'page',
+        'identifier'
+    ];
 }

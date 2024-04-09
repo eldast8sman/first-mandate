@@ -16,7 +16,7 @@ class LandlordSendTenantNotice extends Mailable
     public $name;
     public $landlord;
     public $notice;
-    public $link = env('FRONTEND_URL').'/tenants/notices';
+    public $link;
 
     /**
      * Create a new message instance.
@@ -26,6 +26,7 @@ class LandlordSendTenantNotice extends Mailable
         $this->name = $name;
         $this->landlord = $landlord;
         $this->notice = $notice;
+        $this->link = env('FRONTEND_URL').'/tenants/notices';
     }
 
     /**

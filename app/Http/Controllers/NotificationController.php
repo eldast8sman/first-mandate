@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 
@@ -61,14 +62,27 @@ class NotificationController extends Controller
 
     public function mark_all_as_opened(){
         $notifications = Notification::where('user_id', $this->user->id)->where('status', 0);
-        foreach($notifications as $notification){
-            $notification->status = 1;
-            $notification->save();
+        if($notifications->count() > 0){
+            foreach($notifications->get() as $notification){
+                $notification->status = 1;
+                $notification->save();
+            }
         }
 
         return response([
             'status' => 'success',
             'message' => 'Notifications marked as opened successfully'
+        ], 200);
+    }
+
+    public function activity_logs(){
+        $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 50;
+        
+        $logs = ActivityLog::where('user_id', $this->user->id)->orderBy('created_at', 'desc')->paginate($limit);
+        return response([
+            'status' => 'success',
+            'message' => 'Activity Logs fetched successfully',
+            'data' => $logs
         ], 200);
     }
 }

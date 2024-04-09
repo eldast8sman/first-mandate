@@ -11,6 +11,7 @@ use App\Models\Notice;
 use App\Models\PropertyTenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class NoticeController extends Controller
 {
@@ -66,7 +67,25 @@ class NoticeController extends Controller
             ], 404);
         }
 
+        $uuid = "";
+        for($i=1; $i<=40; $i++){
+            $t_uuid = Str::uuid();
+            if(Notice::where('uuid', $t_uuid)->count() < 1){
+                $uuid = $t_uuid;
+                break;
+            } else {
+                continue;
+            }
+        }
+        if(empty($uuid)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Could not send Notice. Please try again later'
+            ], 500);
+        }
+
         $all = $request->all();
+        $all['uuid'] = $uuid;
         $all['sender_type'] = 'landlord';
         $all['sender_id'] = $this->user->id;
         $all['receiver_type'] = 'tenant';

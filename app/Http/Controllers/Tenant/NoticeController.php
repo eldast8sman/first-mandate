@@ -94,11 +94,11 @@ class NoticeController extends Controller
         }
 
         $notice->acknowledged_status = $request->acknowledged_status;
-        if(!empty($notice->remarks)){
+        if(!empty($request->remarks)){
             $notice->remarks = $request->remarks;
         }
         $notice->save();
-        NotificationController::store($notice->sender_type, $notice->sender_id, "Notice Feedback", "{$this->user->name} has given a feedback to the notice you sent", $notice->uuid);
+        NotificationController::store($notice->sender_type, $notice->sender_id, "Notice Feedback", "{$this->user->name} has given a feedback to the notice you sent", "notices", $notice->uuid);
         self::land_log_activity($this->user->id, "Reacted to a Notice", "notices", $notice->uuid);
 
         return response([

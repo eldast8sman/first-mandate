@@ -16,7 +16,7 @@ class ManagerSendTenantNotice extends Mailable
     public $name;
     public $manager;
     public $notice;
-    public $link = env('FRONTEND_URL').'/tenants/notices';
+    public $link;
 
 
     /**
@@ -27,6 +27,7 @@ class ManagerSendTenantNotice extends Mailable
         $this->name = $name;
         $this->manager = $manager;
         $this->notice = $notice;
+        $this->link = env('FRONTEND_URL').'/tenants/notices';
     }
 
     /**

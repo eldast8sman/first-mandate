@@ -151,7 +151,7 @@ class ReminderController extends Controller
         }
 
         $all = $request->all();
-        $all['uuiid'] = $uuid;
+        $all['uuid'] = $uuid;
         $all['user_type'] = 'landlord';
         $all['user_id'] = $this->user->id;
         $all['recipient_type'] = 'tenant';
