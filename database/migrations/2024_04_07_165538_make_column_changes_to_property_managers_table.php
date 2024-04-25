@@ -23,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('property_managers', function (Blueprint $table) {
-            $table->foreignIdFor(User::class, 'landlord_id')->change();
+            // $table->foreignIdFor(User::class, 'landlord_id')->change();
         });
     }
 };
