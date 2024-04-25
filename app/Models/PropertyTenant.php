@@ -28,6 +28,7 @@ class PropertyTenant extends Model
         'payment_type',
         'no_of_installments',
         'installment_amount',
+        'rent_renewal_status',
         'renew_rent'
     ];
 }

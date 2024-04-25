@@ -26,10 +26,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('properties', function (Blueprint $table) {
-            $table->foreignIdFor(User::class, 'landlord_id')->nullable();
+            $table->foreignIdFor(User::class, 'landlord_id')->nullable()->change();
         });
         Schema::table('property_units', function (Blueprint $table) {
-            $table->foreignIdFor(User::class, 'landlord_id')->nullable();
+            $table->foreignIdFor(User::class, 'landlord_id')->nullable()->change();
         });
     }
 };
