@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('reminders', function (Blueprint $table) {
-            $table->string('reminder_time')->change();
+        Schema::table('property_tenants', function (Blueprint $table) {
+            $table->string('rent_renewal_status')->nullable()->after('installment_amount');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('reminders', function (Blueprint $table) {
-            // $table->integer('reminder_time')->change();
+        Schema::table('property_tenants', function (Blueprint $table) {
+            $table->dropColumn('installment_amount');
         });
     }
 };

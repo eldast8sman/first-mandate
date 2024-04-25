@@ -197,7 +197,7 @@ class PropertyController extends Controller
             ]);
 
             Mail::to($manager)->send(new AddPropertyManagerMail($manager->name, $this->user->name, $new_user, $new_user ? $manager->verification_token : ""));
-            NotificationController::store('manager', $manager->id, "Added as Property Manager", "You've just been added as the Prperty Manager to a Property, {$property->title}, owned by ".$this->user->name, "properties", $property->uuid);
+            NotificationController::store('manager', $manager->id, "Added as Property Manager", "You've just been added as the Property Manager to a Property, {$property->title}, owned by ".$this->user->name, "properties", $property->uuid);
             NoticeController::land_log_activity($this->user->id, "Added Property Manager, {$manager->name}, to Property, {$property->title}", "properties", $property->uuid);
         }
 

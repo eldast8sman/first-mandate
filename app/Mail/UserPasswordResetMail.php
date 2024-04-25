@@ -22,7 +22,7 @@ class UserPasswordResetMail extends Mailable
     public function __construct($name, $token)
     {
         $this->name = $name;
-        $this->link = env('FRONTEND_URL').'/reset-password/'.$token;
+        $this->link = env('FRONTEND_URL').'/new-password/'.$token;
     }
 
     /**

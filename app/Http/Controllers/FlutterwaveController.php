@@ -1,0 +1,239 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\CustomerFlutterwaveToken;
+use App\Models\FlutterwaveWebhook;
+use App\Models\Transaction;
+use Illuminate\Http\Request;
+
+class FlutterwaveController extends Controller
+{
+    protected $secret_key;
+    protected $public_key;
+    protected $base_url;
+    protected $secret_hash;
+    public $errors;
+
+
+    public function __construct()
+    {
+        if(env('FLW_ENV') == 'DEVELOPMENT'){
+            $this->secret_key = env('FLW_SECRET_KEY_DEV');
+            $this->public_key = env('FLW_PUBLIC_KEY_DEV');
+            $this->secret_hash = env('FLW_SECRET_HASH_DEV');
+        } elseif(env('FLW_ENV') == 'PRODUCTION'){
+            $this->secret_key = env('FLW_PUBLIC_KEY_PROD');
+            $this->public_key = env('FLW_PUBLIC_KEY_PROD');
+            $this->secret_hash = env('FLW_SECRET_HASH_PROD');
+        }
+        $this->base_url = env('FLW_BASE_URL');
+    }
+
+    private function perform_post_curl($url, $payload){
+        $url = $this->base_url.$url;
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload)); //Post Fields
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 200);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 200);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json', 
+            'Authorization: BEARER '.$this->secret_key
+        ]);
+                        
+        $request = curl_exec($ch);
+        
+        if($request){
+            $result = json_decode($request);
+            if($result){
+                return $result;
+            } else {
+                $this->errors = $request;
+                return false;
+            }
+        } else {
+            if(curl_error($ch)){
+                $this->errors = 'FLW Error: ' . curl_error($ch);
+            } else {
+                $this->errors = "Bank Connection Failed";
+            }
+            return false;
+        }
+        curl_close($ch);
+    }
+
+    private function perform_get_curl($url){
+        $url = $this->base_url.$url;
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_ENCODING, "");
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json', 
+            'Authorization: '.$this->secret_key
+        ]);
+        $request = curl_exec($ch);
+        
+        
+        if($request){
+            $result = json_decode($request);
+            if($result){
+                return $result;
+            } else {
+                $this->errors = $request;
+                return false;
+            }
+        } else {
+            if(curl_error($ch)){
+                $this->errors = 'Dojah Error: ' . curl_error($ch);
+            } else {
+                $this->errors = "Bank Connection Failed";
+            }
+            return false;
+        }
+		curl_close($ch);
+    }
+
+    public function initiate_payment($user_type, $user_id, $user_type_id, $trans_reference, $event, $event_id=null, $currency='NGN', $amount, $customer, $redirect_url){
+        $url = '/payments';
+        $payload = [
+            'tx_ref' => $trans_reference,
+            'amount' => $amount,
+            'redirect_url' => env('FRONTEND_URL').'/'.$redirect_url,
+            'currency' => $currency,
+            'customer' => [
+                'name' => $customer->name,
+                'email' => $customer->email
+            ],
+            'customizations' => [
+                'title' => '1stMandate Payments',
+                'logo' => 'https://#'
+            ]
+        ];
+
+        $initiate = $this->perform_post_curl($url, $payload);
+        if(!$initiate){
+            return false;
+        }
+
+        $tranx = Transaction::create([
+            'user_type' => $user_type,
+            'user_type_id' => $user_type_id,
+            'user_id' => $user_id,
+            'type' => 'debit',
+            'trans_reference' => $trans_reference,
+            'currency' => $currency,
+            'amount' => $amount,
+            'platform' => 'Flutterwave',
+            'request' => json_encode($payload),
+            'response1' => json_encode($initiate),
+            'status' => 0,
+            'event' => $event,
+            'event_id' => $event_id,
+            'value_given' => 0
+        ]);
+
+        if($initiate->status != "success"){
+            $this->errors = $initiate->message;
+            $tranx->status = 2;
+            $tranx->save();
+            return false;
+        }
+
+        return $initiate->data; 
+        return true;
+    }
+
+    public function verify_payment($transaction_id){
+        $url = "/transactions/{$transaction_id}/verify";
+
+        $verify = $this->perform_get_curl($url);
+        if(!$verify){
+            return false;
+        }
+        if($verify->status != "success"){
+            $this->errors = $verify->message;
+            return false;
+        }
+
+        $data = $verify->data;
+        $tranx = Transaction::where('trans_reference', $data->tx_ref)->first();
+        if(empty($tranx)){
+            $this->errors = "No Transaction was fetched";
+            return false;
+        }
+
+        $tranx->response2 = json_encode($verify);
+        $tranx->save();
+
+        if(($data->currency != $tranx->currency) or ($data->amount < $tranx->amount)){
+            $tranx->status = 2;
+            $tranx->save();
+            $this->errors = "Wrong Transaction";
+            return false;
+        }
+
+        $tranx->status = 1;
+        $tranx->save();
+
+        if(!empty($data->card->token)){
+            $flw_token = CustomerFlutterwaveToken::where('user_id', $tranx->user_id)->where('token', $data->card->token)->first();
+            if(empty($flw_token)){
+                CustomerFlutterwaveToken::create([
+                    'user_id' => $tranx->user_id,
+                    'first_digits' => $data->card->first_6digits,
+                    'last_digits' => $data->card->last_4digits,
+                    'card_issuer' => $data->card->issuer,
+                    'card_type' => $data->card->type,
+                    'country' => $data->card->country,
+                    'token' => $data->card->token
+                ]);
+            }
+        }
+        if($tranx->value_given != 1){
+            // Give Value
+        }
+
+        
+    }
+
+    public function webhook(Request $request){
+        $hash = $request->header('verif-hash');
+        if(!$hash or ($hash != $this->secret_hash)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Wrong Sender'
+            ], 401);
+        }
+
+        $webhook = FlutterwaveWebhook::create([
+            'webhook' => json_encode($request->all()),
+            'event' => isset($request->event) ? $request->event : null,
+            'trans_reference' => isset($request->tx_ref) ? $request->tx_ref : null,
+            'amount' => isset($request->amount) ? $request->amount : null
+        ]);
+
+        if(!empty($webhook->trans_reference)){
+            $tranx = Transaction::where('trans_reference', $webhook->trans_reference)->first();
+            if(!empty($tranx)){
+                $webhook->user_id = $tranx->user_id;
+                $webhook->save();
+            }
+
+            if($webhook->event == 'charge.completed'){
+                $this->verify_payment($request->data->id);
+            }
+        }
+
+        return response([], 200);
+    }
+
+
+}
