@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\CustomerFlutterwaveToken;
 use App\Models\FlutterwaveWebhook;
 use App\Models\Transaction;
+use App\Models\Wallet;
+use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
 
 class FlutterwaveController extends Controller
@@ -147,7 +149,59 @@ class FlutterwaveController extends Controller
             return false;
         }
 
-        return $initiate->data; 
+        return $initiate->data;
+    }
+
+    public function token_charge($token, $user_type, $user_id, $user_type_id, $trans_reference, $event, $event_id=null, $currency='NGN', $amount, $customer){
+        $url = '/tokenized-charges';
+        $data = [
+            'token' => $token,
+            'email' => $customer->email,
+            'currency' => $currency,
+            'amount' => $amount,
+            'tx_ref' => $trans_reference
+        ];
+
+        if(!$charge = $this->perform_post_curl($url, $data)){
+            return false;
+        }
+
+        $tranx = Transaction::create([
+            'user_type' => $user_type,
+            'user_type_id' => $user_type_id,
+            'user_id' => $user_id,
+            'type' => 'debit',
+            'trans_reference' => $trans_reference,
+            'currency' => $currency,
+            'amount' => $amount,
+            'platform' => "Flutterwave",
+            'request' => json_encode($data),
+            'response1' => json_encode($charge),
+            'status' => 0,
+            'event' => $event,
+            'event_id' => $event_id,
+            'value_given' => 0
+        ]);
+
+        if($charge->status != 'success'){
+            $this->errors = $charge->message;
+            $tranx->status = 2;
+            $tranx->save();
+            return false;
+        }
+
+        $charge_data = $charge->data;
+        if($charge_data->status != 'successful'){
+            $this->errors = "Failed Transaction";
+            $tranx->status = 2;
+            $tranx->save();
+            return false;
+        }
+
+        if(!$this->verify_payment($charge_data->id)){
+            return false;
+        }
+
         return true;
     }
 
@@ -171,7 +225,15 @@ class FlutterwaveController extends Controller
         }
 
         $tranx->response2 = json_encode($verify);
+        $tranx->transaction_id = $transaction_id;
         $tranx->save();
+
+        if($data->status != "successful"){
+            $tranx->status - 2;
+            $tranx->save();
+            $this->errors = "Failed Transaction";
+            return false;
+        }
 
         if(($data->currency != $tranx->currency) or ($data->amount < $tranx->amount)){
             $tranx->status = 2;
@@ -198,10 +260,41 @@ class FlutterwaveController extends Controller
             }
         }
         if($tranx->value_given != 1){
-            // Give Value
+            if($tranx->event == 'wallet_transaction'){
+                $trans = WalletTransaction::find($tranx->event_id);
+                if(!empty($trans)){
+                    if($trans->type == 'credit'){
+                        $wallet = Wallet::find($trans->wallet_id);
+                        if(!empty($wallet)){
+                            $trans->pre_amount = $wallet->balance;
+                            $wallet->balance += $trans->amount;
+                            $wallet->total_credit += $trans->amount;
+                            $trans->post_amount = $wallet->balance;
+                            $wallet->save();
+                            $trans->save();
+                        }
+                    }
+                }
+                $tranx->value_given = 1;
+                $tranx->save();
+            }
         }
 
-        
+        return true; 
+    }
+
+    public function flutterwave_verification($trans_id){
+        if(!$this->verify_payment($trans_id)){
+            return response([
+                'status' => 'failed',
+                'message' => $this->errors
+            ], 409);
+        }
+
+        return response([
+            'status' => 'success',
+            'message' => 'Payment successfully verified'
+        ], 200);
     }
 
     public function webhook(Request $request){
@@ -234,6 +327,4 @@ class FlutterwaveController extends Controller
 
         return response([], 200);
     }
-
-
 }
