@@ -73,6 +73,7 @@ Route::middleware('auth:user-api')->group(function(){
         Route::controller(ApartmentController::class)->group(function(){
             Route::get('/apartments', 'index')->name('tenant.apartment.index');
             Route::post('/apartments', 'store')->name('tenant.apartment.store');
+            Route::put('/apartments/{uuid}', 'update')->name('tenant.apartment.update');
         });
 
         Route::controller(TenantReminderController::class)->group(function(){

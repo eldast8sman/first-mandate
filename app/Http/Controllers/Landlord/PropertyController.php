@@ -541,7 +541,7 @@ class PropertyController extends Controller
         if(!$tenant = PropertyTenant::create($all)){
             return response([
                 'status' => 'failed',
-                'message' => 'Tenanr addition failed'
+                'message' => 'Tenant addition failed'
             ], 500);
         }
 

@@ -12,6 +12,7 @@ use App\Models\PropertyTenant;
 use App\Models\PropertyUnit;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class ApartmentController extends Controller
@@ -172,6 +173,96 @@ class ApartmentController extends Controller
         return response([
             'status' => 'success',
             'message' => 'Apartment created successfully',
+            'data' => self::apartment($tenant)
+        ], 200);
+    }
+
+    public function update(StoreApartmentRequest $request, $uuid)
+    {
+
+        $tenant = PropertyTenant::where('uuid', $uuid)->where('user_id', $this->user->id)->first();
+        if(empty($tenant)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No apartment was fetched'
+            ], 404);
+        }
+        if($request->lease_end < $request->lease_start){
+            return response([
+                'status' => 'failed',
+                'message' => 'Lease End date must be later than Lease start date'
+            ], 409);
+        }
+
+        $within = PropertyTenant::where('property_unit_id', $tenant->property_unit_id);
+        if($within->where('lease_start', '<=', $request->lease_start)->where('lease_end', '>=', $request->lease_start)->where('id', '<>', $tenant->id)->count() > 0){
+            return response([
+                'status' => 'failed',
+                'message' => 'The apartment period is overlapping that of another apartment'
+            ], 409);
+        }
+        if($within->where('lease_start', '<=', $request->lease_end)->where('lease_end', '>=', $request->lease_end)->where('id', '<>', $tenant->id)->count() > 0){
+            return response([
+                'status' => 'failed',
+                'message' => 'The apartment period is overlapping that of another apartment'
+            ], 409);
+        }
+        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->where('id', '<>', $tenant->id)->count() > 0){
+            return response([
+                'status' => 'failed',
+                'message' => 'The apartment period is overlapping that of another apartment'
+            ], 409);
+        }
+        
+        $today = date('Y-m-d');
+        $current_tenant = (($today >= $request->lease_start) and ($today <= $request->lease_end)) ? true : false;
+        
+        $property = Property::find($tenant->property_id);
+        $property->title = $request->property_title;
+        $property->address = $request->address;
+        $property->city = $request->city;
+        $property->state = $request->state;
+        $property->country = $request->country ?? 'Nigeria';
+        $property->save();
+        
+        $unit = PropertyUnit::find($tenant->property_unit_id);
+        $unit->unit_name = $request->unit_name;
+        $unit->unit_type = $request->unit_type;
+        $unit->no_of_bedrooms = $request->no_of_bedrooms;
+        $unit->save();
+
+        $tenant->lease_start = $request->lease_start;
+        $tenant->lease_end = $request->lease_end;
+        $tenant->current_tenant = $current_tenant;
+        $tenant->rent_payment_status = $request->rent_payment_status ?? "";
+        $tenant->rent_due_date = $request->rent_due_date;
+        $tenant->rent_amount = $request->rent_amount;
+        $tenant->renew_rent = $request->renew_rent;
+        $tenant->save();
+
+        if(($tenant->current_tenant == 1) and (!empty($tenant->rent_due_date))){
+            $due_date = DueDate::where('purpose', 'Rent Due Date')->where('property_tenant_id', $tenant->id)->where('status', 1)->first();
+            if(!empty($due_date)){
+                $due_date->due_date = $tenant->rent_due_date;
+                $due_date->save();
+            } else {
+                DueDate::create([
+                    'landlord_id' => $this->user->id,
+                    'property_tenant_id' => $tenant->id,
+                    'property_id' => $tenant->property_id,
+                    'property_unit_id' => $tenant->property_unit_id,
+                    'due_date' => $tenant->rent_due_date,
+                    'purpose' => 'Rent Due Date',
+                    'cash_payment' => true
+                ]);
+            }
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Editied an Apartment: {$property->title} - {$unit->unit_name}", "apartments", $tenant->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Apartment updated successfully',
             'data' => self::apartment($tenant)
         ], 200);
     }
