@@ -22,7 +22,7 @@ class UserEmailVerificationMail extends Mailable
     public function __construct($name, $token)
     {
         $this->name = $name;
-        $this->link = env('FRONTEND_URL').'/activate-email/'.$token;
+        $this->link = env('FRONTEND_URL').'/verify-user/'.$token;
     }
 
     /**
