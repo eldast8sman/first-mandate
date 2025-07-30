@@ -33,7 +33,8 @@ class User extends Authenticatable implements JWTSubject
         'roles',
         'section',
         'last_login',
-        'prev_login'
+        'prev_login',
+        'sections'
     ];
 
     /**

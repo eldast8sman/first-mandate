@@ -39,6 +39,9 @@ Route::controller(AuthController::class)->group(function(){
 Route::middleware('auth:user-api')->group(function(){
     Route::controller(AuthController::class)->group(function(){
         Route::get('/me', 'me')->name('user.me');
+        Route::put('/me/sections', 'update_sections')->name('user.updateSections');
+        Route::get('/me/switch-section/{section}', 'switch_section')->name('user.switchSection');
+        Route::put('/me', 'update')->name('user.update');
     });
 
     Route::controller(PropertyController::class)->group(function(){
