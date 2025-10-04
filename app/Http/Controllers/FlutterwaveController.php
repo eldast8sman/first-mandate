@@ -48,6 +48,8 @@ class FlutterwaveController extends Controller
         ]);
                         
         $request = curl_exec($ch);
+
+        $this->errors = $request;
         
         if($request){
             $result = json_decode($request);
@@ -94,7 +96,7 @@ class FlutterwaveController extends Controller
             }
         } else {
             if(curl_error($ch)){
-                $this->errors = 'Dojah Error: ' . curl_error($ch);
+                $this->errors = 'FLW Error: ' . curl_error($ch);
             } else {
                 $this->errors = "Bank Connection Failed";
             }
@@ -327,4 +329,65 @@ class FlutterwaveController extends Controller
 
         return response([], 200);
     }
+
+    public function create_account($tx_ref, $first_name, $last_name, $bvn, $email, $phone){
+        $data = [
+            'email' => $email,
+            'currency' => 'NGN',
+            'firstname' => $first_name,
+            'lastname' => $last_name,
+            'tx_ref' => $tx_ref,
+            'amount' => 2000,
+            'is_permanent' => true,
+            'narration' => '1stMandate '.$first_name.' '.$last_name,
+            'phonenumber' => $phone,
+        ];
+        $create = $this->perform_post_curl('/virtual-account-numbers', $data);
+        if(!$create){
+            return false;
+        }
+
+        if($create->status != 'success'){
+            $this->errors = $create->message;
+            return false;
+        }
+
+        return $create->data;
+    }
+
+    public function initiate_bvn_consent($bvn, $first_name, $last_name){
+        $data = [
+            'bvn' => $bvn,
+            'firstname' => $first_name,
+            'lastname' => $last_name,
+            'redirect_url' => env('APP_URL').'/bvn-redirect'
+        ];
+        $initiate = $this->perform_post_curl('/bvn/verifications', $data);
+        if(!$initiate){
+            return false;
+        }
+
+        if($initiate->status != 'success'){
+            $this->errors = $initiate->message;
+            return false;
+        }
+
+        return $initiate->data;
+    }
+
+    public function get_banks(){
+        $banks = $this->perform_get_curl('/banks/NG');
+        if(!$banks){
+            return false;
+        }
+
+        if($banks->status != 'success'){
+            $this->errors = $banks->message;
+            return false;
+        }
+
+        return $banks->data;
+    }
+
+    public function transfer_funds($amount, )
 }

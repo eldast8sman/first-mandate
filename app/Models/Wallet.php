@@ -12,12 +12,17 @@ class Wallet extends Model
     protected $fillable = [
         'user_id',
         'uuid',
+        'bvn',
+        'tx_ref',
         'balance',
         'total_credit',
         'total_debit_amount',
         'bank',
         'bank_code',
         'account_number',
-        'account_name'
+        'account_name',
+        'rec_bank',
+        'rec_account_number',
+        'rec_account_name'
     ];
 }
