@@ -6,17 +6,46 @@ use App\Http\Requests\FundWalletRequest;
 use App\Models\CustomerFlutterwaveToken;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Services\FlutterwaveService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class WalletController extends Controller
 {
     private $user;
+    private $flutterwave;
 
     public function __construct()
     {
         $this->middleware('auth:user-api');
         $this->user = AuthController::user();
+        $this->flutterwave = new FlutterwaveController();
+    }
+
+    public function fetch_banks(){
+        // $banks = Cache::remember('flutterwave_banks', 60*60*24*30, function() {
+        //     return $this->flutterwave->get_banks();
+        // });
+
+        // return response([
+        //     'status' => 'success',
+        //     'message' => 'Banks fetched successfully',
+        //     'data' => $banks
+        // ], 200);
+        $banks = $this->flutterwave->get_banks();
+        if(!$banks){
+            return response([
+                'status' => 'failed',
+                'message' => $this->flutterwave->errors
+            ], 500);
+        }
+
+        return response([
+            'status' => 'success',
+            'message' => 'Banks fetched successfully',
+            'data' => $banks
+        ], 200);
     }
 
     public function fetch_wallet_balance(){
@@ -39,7 +68,7 @@ class WalletController extends Controller
 
         return response([
             'status' => 'success',
-            'message' => 'Wallet fetched uiccessfully',
+            'message' => 'Wallet fetched successfully',
             'data' => $wallet
         ], 200);
     }
@@ -146,4 +175,45 @@ class WalletController extends Controller
             'message' => 'Payment Card was deleted successfully'
         ], 200);
     }
+
+    public function initiate_bvn_consent(Request $request){
+        $validate = $request->validate([
+            'bvn' => 'required|string|size:11'
+        ]);
+        if(!$validate){
+            return response([
+                'status' => 'failed',
+                'message' => 'Validation Failed'
+            ], 422);
+        }
+
+        $name = explode(' ', $this->user->name);
+        $first_name = $name[0];
+        $last_name = isset($name[1]) ? $name[1] : '';
+
+        if(!$data = $this->flutterwave->initiate_bvn_consent($validate['bvn'], $first_name, $last_name)){
+            return response([
+                'status' => 'failed',
+                'message' => $this->flutterwave->errors
+            ], 500);
+        }
+
+        return response([
+            'status' => 'success',
+            'message' => 'BVN Consent Initiated Successfully',
+            'data' => $data
+        ], 200);
+    }
+
+//     public function fetch_banks(){
+//         $banks = Cache::remember('flutterwave_banks', 60*60*24*30, function() {
+//             return $this->flutterwave->get_banks();
+//         });
+
+//         return response([
+//             'status' => 'success',
+//             'message' => 'Banks fetched successfully',
+//             'data' => $banks
+//         ], 200);
+//     }
 }

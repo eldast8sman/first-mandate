@@ -11,6 +11,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tenant\ApartmentController;
 use App\Http\Controllers\Tenant\NoticeController as TenantNoticeController;
 use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
+use App\Http\Controllers\WalletController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use PharIo\Manifest\AuthorCollection;
@@ -125,5 +126,10 @@ Route::middleware('auth:user-api')->group(function(){
         Route::get('/notifications/{notification}/open', 'open');
         Route::get('/notifications/mark-all-as-opened', 'mark_all_as_opened');
         Route::get('/activity-logs', 'activity_logs');
+    });
+
+    Route::prefix('wallet')->controller(WalletController::class)->group(function(){
+        Route::post('/bvn-consent/initiate', 'initiate_bvn_consent');
+        Route::get('/banks', 'fetch_banks');
     });
 });
