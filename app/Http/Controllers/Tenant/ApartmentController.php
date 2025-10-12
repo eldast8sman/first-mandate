@@ -2,17 +2,18 @@
 
 namespace App\Http\Controllers\Tenant;
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Tenant\StoreApartmentRequest;
+use App\Models\User;
 use App\Models\DueDate;
 use App\Models\Property;
-use App\Models\PropertyManager;
-use App\Models\PropertyTenant;
-use App\Models\PropertyUnit;
-use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use App\Models\PropertyUnit;
+use Illuminate\Http\Request;
+use App\Models\PropertyTenant;
+use App\Models\PropertyManager;
+use App\Models\PropertySetting;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\AuthController;
+use App\Http\Requests\Tenant\StoreApartmentRequest;
 
 class ApartmentController extends Controller
 {
@@ -54,6 +55,7 @@ class ApartmentController extends Controller
     }
 
     public function index(){
+        dd($this->user);
         $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
         $tenancies = PropertyTenant::where('user_id', $this->user->id)->paginate($limit);
         if(empty($tenancies)){

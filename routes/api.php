@@ -1,20 +1,25 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\FlutterwaveController;
 use App\Http\Controllers\Landlord\NoticeController as LandlordNoticeController;
 use App\Http\Controllers\Landlord\PropertyController;
+use App\Http\Controllers\Landlord\PropertySettingController;
 use App\Http\Controllers\Landlord\ReminderController;
 use App\Http\Controllers\Manager\NoticeController;
 use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
+use App\Http\Controllers\Manager\PropertySettingController as ManagerPropertySettingController;
 use App\Http\Controllers\Manager\ReminderController as ManagerReminderController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Tenant\ApartmentController;
 use App\Http\Controllers\Tenant\NoticeController as TenantNoticeController;
 use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
+use App\Http\Controllers\Tenant\RentPaymentController;
 use App\Http\Controllers\WalletController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use PharIo\Manifest\AuthorCollection;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -59,6 +64,11 @@ Route::middleware('auth:user-api')->group(function(){
         Route::put('/tenants/{uuid}', 'update_tenant')->name('property.tenant.update');
     });
 
+    Route::controller(PropertySettingController::class)->group(function(){
+        Route::get('/properties/{uuid}/setting', 'fetch_setting')->name('landlord.property.setting.fetch');
+        Route::put('/properties/{uuid}/setting', 'update_setting')->name('landlord.property.setting.update');
+    });
+
     Route::controller(ReminderController::class)->group(function(){
         Route::post('/reminders', 'store')->name('landlord.reminder.store');
         Route::post('/tenants/{uuid}/send-reminder', 'send_reminder');
@@ -92,6 +102,11 @@ Route::middleware('auth:user-api')->group(function(){
             Route::get('/all-notices', 'index');
             Route::post('/notices/acknowledge', 'acknowledge_notice');
         });
+
+        Route::controller(RentPaymentController::class)->prefix('apartment-rents')->group(function(){
+            Route::get('/{uuid}/rent-details', 'fetch_rent')->name('tenant.rent.fetch');
+            Route::post('/{uuid}/initiate-payment', 'initiate_rent_payment')->name('tenant.rent.initiatePayment');
+        });
     });
 
     Route::prefix('property-manager')->group(function(){
@@ -118,6 +133,11 @@ Route::middleware('auth:user-api')->group(function(){
             Route::get('/notices', 'index');
             Route::post('/notices', 'send_notice');
         });
+
+        Route::controller(ManagerPropertySettingController::class)->group(function(){
+            Route::get('/properties/{uuid}/setting', 'fetch_setting')->name('manager.property.setting.fetch');
+            Route::put('/properties/{uuid}/setting', 'update_setting')->name('manager.property.setting.update');
+        }); 
     });
 
     Route::controller(NotificationController::class)->group(function(){
@@ -129,7 +149,21 @@ Route::middleware('auth:user-api')->group(function(){
     });
 
     Route::prefix('wallet')->controller(WalletController::class)->group(function(){
-        Route::post('/bvn-consent/initiate', 'initiate_bvn_consent');
+        Route::get('/', 'fetch_wallet_balance');
         Route::get('/banks', 'fetch_banks');
+        Route::post('/bvn-consent/initiate', 'initiate_bvn_consent');
+        Route::post('/fund', 'fund_wallet');
+        Route::get('/verify-payment/{trans_id}', 'verify_payment');
+        Route::get('/cards', 'cards');
+        Route::delete('/cards/{id}', 'remove_card');
+        Route::post('/account-name/resolve', 'resolve_account_number');
+        Route::put('/account-details', 'set_account_details');
+        Route::post('/withdraw', 'withdraw_funds');
+        Route::get('/transaction-history', 'transaction_history');
     });
+});
+
+Route::controller(FlutterwaveController::class)->prefix('flutterwave')->group(function(){
+    Route::post('/webhook', 'webhook');
+    Route::post('/transfer-callback', 'transfer_callback');
 });

@@ -31,4 +31,14 @@ class PropertyTenant extends Model
         'rent_renewal_status',
         'renew_rent'
     ];
+
+    public function property()
+    {
+        return $this->belongsTo(Property::class, 'property_id');
+    }
+
+    public function unit()
+    {
+        return $this->belongsTo(PropertyUnit::class, 'property_unit_id');
+    }
 }

@@ -16,9 +16,9 @@ return new class extends Migration
             $table->id();
             $table->foreignIdFor(User::class, 'user_id');
             $table->string('uuid');
-            $table->double('balance')->default(0);
-            $table->double('total_credit')->default(0);
-            $table->double('total_debit')->default(0);
+            $table->decimal('balance', 20, 2)->default(0);
+            $table->decimal('total_credit', 20, 2)->default(0);
+            $table->decimal('total_debit', 20, 2)->default(0);
             $table->string('bank')->nullable();
             $table->string('bank_code')->nullable();
             $table->string('account_number')->nullable();

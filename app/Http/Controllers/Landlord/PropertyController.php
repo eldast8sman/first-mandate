@@ -14,6 +14,7 @@ use App\Mail\AddTenantMail;
 use App\Models\DueDate;
 use App\Models\Property;
 use App\Models\PropertyManager;
+use App\Models\PropertySetting;
 use App\Models\PropertyTenant;
 use App\Models\PropertyUnit;
 use App\Models\User;
@@ -119,6 +120,13 @@ class PropertyController extends Controller
                 'message' => 'Server Error! Please try again later'
             ], 500);
         }
+
+        PropertySetting::create([
+            'property_id' => $property->id,
+            'user_type' => 'landlord',
+            'tenant_pays_commission' => false,
+            'pay_rent_to' => 'landlord'
+        ]);
 
         NoticeController::land_log_activity($this->user->id, "Added Property: {$property->title}", "properties", $property->uuid);
 

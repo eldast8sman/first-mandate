@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\AccountActivationRequest;
-use App\Http\Requests\ActivateAccountRequest;
-use App\Http\Requests\ForgotPasswordRequest;
-use App\Http\Requests\LoginRequest;
-use App\Http\Requests\ResetPasswordRequest;
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\UpdateSectionRequest;
-use App\Http\Requests\UpdateUserRequest;
-use App\Mail\UserEmailVerificationMail;
-use App\Mail\UserPasswordResetMail;
 use App\Models\User;
+use Illuminate\Support\Str;
+use App\Http\Requests\LoginRequest;
+use App\Mail\UserPasswordResetMail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
+use App\Http\Requests\StoreUserRequest;
+use App\Mail\UserEmailVerificationMail;
+use App\Http\Requests\UpdateUserRequest;
+use App\Models\CustomerFlutterwaveToken;
+use App\Http\Requests\ResetPasswordRequest;
+use App\Http\Requests\UpdateSectionRequest;
+use App\Http\Requests\ForgotPasswordRequest;
+use App\Http\Requests\ActivateAccountRequest;
+use App\Http\Requests\AccountActivationRequest;
 
 class AuthController extends Controller
 {
@@ -84,6 +85,7 @@ class AuthController extends Controller
         $user->prev_login = !empty($user->last_login) ? $user->last_login : date('Y-m-d H:i:s');
         $user->last_login = date('Y-m-d H:i:s');
         $user->save();
+        $this->clear_flutterwave_tokens($user->id);
         $user->sections = json_decode($user->sections, true) ?? [];
 
         $authorization = [
@@ -95,6 +97,15 @@ class AuthController extends Controller
         $user->authorization = $authorization;
 
         return $user;
+    }
+
+    private function clear_flutterwave_tokens($user_id){
+        $tokens = CustomerFlutterwaveToken::where('user_id', $user_id)->where('token_expiry', '<', date('Y-m-d'))->get();
+        if(!empty($tokens)){
+            foreach($tokens as $token){
+                $token->delete();
+            }
+        }
     }
 
     public function login(LoginRequest $request){

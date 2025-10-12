@@ -18,9 +18,11 @@ return new class extends Migration
             $table->foreignIdFor(User::class, 'user_id');
             $table->foreignIdFor(Wallet::class, 'wallet_id');
             $table->string('type');
-            $table->double('amount');
-            $table->double('pre_amount')->nullable();
-            $table->double('post_amount')->nullable();
+            $table->decimal('original_amount', 20, 2);
+            $table->decimal('charges', 20, 2)->default(0);
+            $table->decimal('amount', 20, 2);
+            $table->decimal('pre_amount', 20, 2)->nullable();
+            $table->decimal('post_amount', 20, 2)->nullable();
             $table->text('remarks')->nullable();
             $table->integer('status')->default(0);
             $table->timestamps();

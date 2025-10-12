@@ -20,3 +20,7 @@ Route::get('/', function () {
 Route::get('/bvn-redirect', function(){
     return view('bvn-redirect');
 });
+
+Route::get('/payments/verify', function(){
+    return view('payments-verify');
+});

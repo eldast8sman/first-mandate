@@ -5,20 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class WalletTransaction extends Model
+class RentPaymentInstallment extends Model
 {
     use HasFactory;
-
+    
     protected $fillable = [
-        'user_id',
-        'wallet_id',
-        'type',
-        'original_amount',
+        'rent_payment_id',
+        'payment_method',
         'amount',
-        'charges',
-        'pre_amount',
-        'post_amount',
-        'remarks',
+        'no_of_installment',
         'status'
     ];
 }

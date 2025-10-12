@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CustomerFlutterwaveToken;
-use App\Models\FlutterwaveWebhook;
-use App\Models\Transaction;
+use Carbon\Carbon;
 use App\Models\Wallet;
-use App\Models\WalletTransaction;
+use App\Models\Transaction;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Models\WalletTransaction;
+use App\Models\FlutterwaveWebhook;
+use App\Models\CustomerFlutterwaveToken;
 
 class FlutterwaveController extends Controller
 {
@@ -44,7 +46,7 @@ class FlutterwaveController extends Controller
         curl_setopt($ch, CURLOPT_TIMEOUT, 200);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json', 
-            'Authorization: BEARER '.$this->secret_key
+            'Authorization: Bearer '.$this->secret_key
         ]);
                         
         $request = curl_exec($ch);
@@ -81,7 +83,7 @@ class FlutterwaveController extends Controller
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type: application/json', 
-            'Authorization: '.$this->secret_key
+            'Authorization: Bearer '.$this->secret_key
         ]);
         $request = curl_exec($ch);
         
@@ -105,16 +107,17 @@ class FlutterwaveController extends Controller
 		curl_close($ch);
     }
 
-    public function initiate_payment($user_type, $user_id, $user_type_id, $trans_reference, $event, $event_id=null, $currency='NGN', $amount, $customer, $redirect_url){
+    public function initiate_payment($user, $amount){
         $url = '/payments';
+        $reference = 'FLW_'.Str::random(6).'_'.Str::random(6).'_'.time();
         $payload = [
-            'tx_ref' => $trans_reference,
+            'tx_ref' => $reference,
             'amount' => $amount,
-            'redirect_url' => env('FRONTEND_URL').'/'.$redirect_url,
-            'currency' => $currency,
+            'redirect_url' => env('APP_URL').'/payments/verify',
+            'currency' => 'NGN',
             'customer' => [
-                'name' => $customer->name,
-                'email' => $customer->email
+                'name' => $user->name,
+                'email' => $user->email
             ],
             'customizations' => [
                 'title' => '1stMandate Payments',
@@ -127,91 +130,109 @@ class FlutterwaveController extends Controller
             return false;
         }
 
-        $tranx = Transaction::create([
-            'user_type' => $user_type,
-            'user_type_id' => $user_type_id,
-            'user_id' => $user_id,
-            'type' => 'debit',
-            'trans_reference' => $trans_reference,
-            'currency' => $currency,
+        if($initiate->status != "success"){
+            $this->errors = $initiate->message;
+            return false;
+        }
+
+        Transaction::create([
+            'user_type' => 'user',
+            'user_type_id' => $user->id,
+            'user_id' => $user->id,
+            'type' => 'credit',
+            'trans_reference' => $reference,
+            'transaction_id' => rand(000000, 999999),
+            'currency' => 'NGN',
             'amount' => $amount,
             'platform' => 'Flutterwave',
             'request' => json_encode($payload),
             'response1' => json_encode($initiate),
             'status' => 0,
-            'event' => $event,
-            'event_id' => $event_id,
+            'event' => 'wallet_transaction',
+            'event_id' => rand(000000, 999999),
             'value_given' => 0
         ]);
-
-        if($initiate->status != "success"){
-            $this->errors = $initiate->message;
-            $tranx->status = 2;
-            $tranx->save();
-            return false;
-        }
 
         return $initiate->data;
     }
 
-    public function token_charge($token, $user_type, $user_id, $user_type_id, $trans_reference, $event, $event_id=null, $currency='NGN', $amount, $customer){
+    public function token_charge($token, $user, $amount, $email){
         $url = '/tokenized-charges';
+        $name = $user->name;
+        $name_array = explode(' ', $name);
+        $first_name = $name_array[0];
+        $last_name = $name_array[1];
+        $reference = 'FLW_'.Str::random(6).'_'.Str::random(6).'_'.time();
         $data = [
             'token' => $token,
-            'email' => $customer->email,
-            'currency' => $currency,
+            'email' => $email,
+            'currency' => 'NGN',
             'amount' => $amount,
-            'tx_ref' => $trans_reference
+            'tx_ref' => $reference,
+            'first_name' => $first_name,
+            'last_name' => $last_name,
+            'redirect_url' =>'https://app.1stmandate.com/payments/verify/old-card'
         ];
 
         if(!$charge = $this->perform_post_curl($url, $data)){
             return false;
         }
 
+        if($charge->status != 'success'){
+            $this->errors = $charge->message;
+            return false;
+        }
+
         $tranx = Transaction::create([
-            'user_type' => $user_type,
-            'user_type_id' => $user_type_id,
-            'user_id' => $user_id,
-            'type' => 'debit',
-            'trans_reference' => $trans_reference,
-            'currency' => $currency,
+            'user_type' => 'user',
+            'user_type_id' => $user->id,
+            'user_id' => $user->id,
+            'type' => 'credit',
+            'trans_reference' => $reference,
+            'transaction_id' => rand(000000, 999999),
+            'currency' => 'NGN',
             'amount' => $amount,
             'platform' => "Flutterwave",
             'request' => json_encode($data),
             'response1' => json_encode($charge),
             'status' => 0,
-            'event' => $event,
-            'event_id' => $event_id,
+            'event' => 'wallet_transaction',
+            'event_id' => rand(000000, 999999),
             'value_given' => 0
         ]);
 
-        if($charge->status != 'success'){
-            $this->errors = $charge->message;
-            $tranx->status = 2;
-            $tranx->save();
-            return false;
-        }
-
         $charge_data = $charge->data;
-        if($charge_data->status != 'successful'){
+
+        if($charge_data->status == 'successful'){
+            if(!$this->verify_payment($charge_data->id)){
+                $this->errors = "Failed Transaction";
+                $tranx->status = 2;
+                $tranx->save();
+                return false;
+            } else {
+                return [
+                    'status' => 'successful',
+                    'redirect_link' => null
+                ];
+            }
+        } elseif($charge_data->status === 'pending'){
+            if(!empty($charge_data->meta) and !empty($charge_data->meta->authorization) and !empty($charge_data->meta->authorization->redirect)){
+                return [
+                    'status' => 'pending',
+                    'redirect_link' => $charge_data->meta->authorization->redirect
+                ];
+            }
+        } else {
             $this->errors = "Failed Transaction";
             $tranx->status = 2;
             $tranx->save();
             return false;
         }
-
-        if(!$this->verify_payment($charge_data->id)){
-            return false;
-        }
-
-        return true;
     }
 
-    public function verify_payment($transaction_id){
-        $url = "/transactions/{$transaction_id}/verify";
-
-        $verify = $this->perform_get_curl($url);
-        if(!$verify){
+    public function verify_payment($trans_id){
+        $url = "/transactions/{$trans_id}/verify";
+        if(!$verify = $this->perform_get_curl($url)){
             return false;
         }
         if($verify->status != "success"){
@@ -227,7 +248,7 @@ class FlutterwaveController extends Controller
         }
 
         $tranx->response2 = json_encode($verify);
-        $tranx->transaction_id = $transaction_id;
+        $tranx->transaction_id = $trans_id;
         $tranx->save();
 
         if($data->status != "successful"){
@@ -248,8 +269,16 @@ class FlutterwaveController extends Controller
         $tranx->save();
 
         if(!empty($data->card->token)){
-            $flw_token = CustomerFlutterwaveToken::where('user_id', $tranx->user_id)->where('token', $data->card->token)->first();
-            if(empty($flw_token)){
+            $token = CustomerFlutterwaveToken::where([
+                'user_id' => $tranx->user_id,
+                'first_digits' => $data->card->first_6digits,
+                'last_digits' => $data->card->last_4digits,
+                'card_issuer' => $data->card->issuer,
+                'card_type' => $data->card->type,
+                'country' => $data->card->country,
+                'card_expiry' => $data->card->expiry
+            ])->first();
+            if(empty($token)){
                 CustomerFlutterwaveToken::create([
                     'user_id' => $tranx->user_id,
                     'first_digits' => $data->card->first_6digits,
@@ -257,32 +286,15 @@ class FlutterwaveController extends Controller
                     'card_issuer' => $data->card->issuer,
                     'card_type' => $data->card->type,
                     'country' => $data->card->country,
-                    'token' => $data->card->token
+                    'token' => $data->card->token,
+                    'card_expiry' => $data->card->expiry,
+                    'email' => $data->customer->email,
+                    'token_expiry' => Carbon::now('Africa/Lagos')->addYear()->format('Y-m-d')
                 ]);
             }
         }
-        if($tranx->value_given != 1){
-            if($tranx->event == 'wallet_transaction'){
-                $trans = WalletTransaction::find($tranx->event_id);
-                if(!empty($trans)){
-                    if($trans->type == 'credit'){
-                        $wallet = Wallet::find($trans->wallet_id);
-                        if(!empty($wallet)){
-                            $trans->pre_amount = $wallet->balance;
-                            $wallet->balance += $trans->amount;
-                            $wallet->total_credit += $trans->amount;
-                            $trans->post_amount = $wallet->balance;
-                            $wallet->save();
-                            $trans->save();
-                        }
-                    }
-                }
-                $tranx->value_given = 1;
-                $tranx->save();
-            }
-        }
 
-        return true; 
+        return $tranx;
     }
 
     public function flutterwave_verification($trans_id){
@@ -389,5 +401,136 @@ class FlutterwaveController extends Controller
         return $banks->data;
     }
 
-    public function transfer_funds($amount, )
+    public function verify_account($account_number, $bank_code){
+        $url = "/accounts/resolve";
+        $data = [
+            'account_number' => $account_number,
+            'account_bank' => $bank_code
+        ];
+        if(!$verify = $this->perform_post_curl($url, $data)){
+            return false;
+        }
+        if($verify->status != 'success'){
+            $this->errors = $verify->message;
+            return false;
+        }
+
+        return $verify->data;
+    }
+
+    public function transfer($user, $account_number, $bank_code, $amount, $tx_ref){
+        $url = "/transfers";
+        $data = [
+            "reference" => $tx_ref,
+            "account_bank" => $bank_code,
+            "account_number" => $account_number,
+            "amount" => $amount,
+            "currency" => "NGN",
+            "narration" => "1stMandate Withdrawal",
+            "callback_url" => env('APP_URL')."/api/flutterwave/transfer-callback",
+        ];
+
+        $withdraw = $this->perform_post_curl($url, $data);
+        if(!$withdraw){
+            return false;
+        }
+
+        $tranx = Transaction::create([
+            'user_type' => 'user',
+            'user_type_id' => $user->id,
+            'user_id' => $user->id,
+            'type' => 'debit',
+            'trans_reference' => $tx_ref,
+            'transaction_id' => rand(000000, 999999),
+            'amount' => $amount,
+            'currency' => 'NGN',
+            'platform' => 'Flutterwave',
+            'request' => json_encode($data),
+            'response1' => json_encode($withdraw),
+            'status' => 0,
+            'event' => 'wallet_transaction',
+            'event_id' => rand(000000, 999999),
+            'value_given' => 0
+        ]);
+
+        if($withdraw->status != 'success'){
+            $this->errors = $withdraw->message;
+            $tranx->status = 2;
+            $tranx->save();
+            return false;
+        }
+
+        $withdraw_data = $withdraw->data;
+        if($withdraw_data->status == 'FAILED'){
+            $this->errors = "Failed Transaction: ".$withdraw_data->complete_message;
+            $tranx->status = 2;
+            $tranx->save();
+            return false;
+        }
+
+        $tranx->transaction_id = $withdraw_data->id;
+        $tranx->save();
+
+        return $tranx;
+    }
+
+    public function transfer_callback(Request $request){
+        $hash = $request->header('verif-hash');
+        if(!$hash or ($hash != $this->secret_hash)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Wrong Sender'
+            ], 401);
+        }
+
+        $webhook = FlutterwaveWebhook::create([
+            'webhook' => json_encode($request->all()),
+            'event' => isset($request->event) ? $request->event : null,
+            'trans_reference' => isset($request->data['reference']) ? $request->data['reference'] : null,
+            'amount' => isset($request->data['amount']) ? $request->data['amount'] : null
+        ]);
+        if($request->event != 'transfer.completed'){
+            return response([], 200);
+        }
+        $tranx = Transaction::where('trans_reference', $webhook->trans_reference)->first();
+        if(!empty($tranx)){
+            $webhook->user_id = $tranx->user_id;
+            $webhook->save();
+
+            if($tranx->value_given == 1){
+                return response([], 200);
+            }
+            $tranx->response2 = json_encode($request->all());
+            if($request->data['status'] == 'SUCCESSFUL'){
+                $tranx->status = 1;
+            } elseif($request->data['status'] == 'FAILED'){
+                $tranx->status = 2;
+                if($tranx->event == 'wallet_transaction'){
+                    $trans = WalletTransaction::find($tranx->event_id);
+                    if(!empty($trans)){
+                        $wallet = Wallet::find($trans->wallet_id);
+                        if(!empty($wallet)){
+                            $wallet->balance = $wallet->balance + $trans->amount;
+                            $wallet->total_credit = $wallet->total_credit + $trans->amount;
+                            $wallet->save();
+
+                            WalletTransaction::create([
+                                'user_id' => $wallet->user_id,
+                                'wallet_id' => $wallet->id,
+                                'type' => 'credit',
+                                'original_amount' => $trans->amount,
+                                'charges' => 0,
+                                'amount' => $trans->amount,
+                                'pre_amount' => $wallet->balance - $trans->amount,
+                                'post_amount' => $wallet->balance,
+                                'remarks' => 'Reversal of failed withdrawal transfer. Transfer Reference: '.$tranx->trans_reference
+                            ]);
+                        }
+                    }
+                }
+            }
+            $tranx->value_given = 1;
+            $tranx->save();
+        }
+    }
 }

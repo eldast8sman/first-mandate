@@ -24,7 +24,7 @@ class AccountActivationRequest extends FormRequest
     {
         return [
             'token' => 'required|string|exists:users,verification_token',
-            'password' => ['required', 'string', Password::min(8)->mixedCase()->symbols()->uncompromised()]
+            'password' => ['required', 'string', Password::min(8)->mixedCase()->symbols()]
         ];
     }
 }

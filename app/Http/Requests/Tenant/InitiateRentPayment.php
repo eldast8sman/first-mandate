@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests;
+namespace App\Http\Requests\Tenant;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class FundWalletRequest extends FormRequest
+class InitiateRentPayment extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,9 +22,9 @@ class FundWalletRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => 'required|numeric',
-            'payment_method' => 'required|string|in:new,old',
-            'card_id' => 'required_if:payment_method,old|integer|exists:customer_flutterwave_tokens,id'
-        ]; 
+            'payment_type' => 'required|string|in:full,installment',
+            'no_of_installments' => 'required_if:payment_type,installment|nullable|integer|min:1',
+            'payment_method' => 'required|string|in:card,wallet'
+        ];
     }
 }

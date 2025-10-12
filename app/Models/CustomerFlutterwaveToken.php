@@ -10,12 +10,15 @@ class CustomerFlutterwaveToken extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'first_digits',
         'last_digits',
         'card_issuer',
         'card_type',
         'card_expiry',
         'token',
-        'country'
+        'country',
+        'email',
+        'token_expiry'
     ];
 }

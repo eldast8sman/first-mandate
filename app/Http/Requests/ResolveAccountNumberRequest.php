@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class FundWalletRequest extends FormRequest
+class ResolveAccountNumberRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,9 +22,8 @@ class FundWalletRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'amount' => 'required|numeric',
-            'payment_method' => 'required|string|in:new,old',
-            'card_id' => 'required_if:payment_method,old|integer|exists:customer_flutterwave_tokens,id'
-        ]; 
+            'account_number' => 'required|string|size:10',
+            'bank_code' => 'required|string'
+        ];
     }
 }
