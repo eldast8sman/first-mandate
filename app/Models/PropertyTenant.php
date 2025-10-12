@@ -19,7 +19,7 @@ class PropertyTenant extends Model
         'email',
         'phone',
         'current_tenant',
-        'lease_state',
+        'lease_start',
         'lease_end',
         'rent_term',
         'rent_amount',
@@ -27,6 +27,18 @@ class PropertyTenant extends Model
         'rent_payment_status',
         'payment_type',
         'no_of_installments',
-        'installment_amount'
+        'installment_amount',
+        'rent_renewal_status',
+        'renew_rent'
     ];
+
+    public function property()
+    {
+        return $this->belongsTo(Property::class, 'property_id');
+    }
+
+    public function unit()
+    {
+        return $this->belongsTo(PropertyUnit::class, 'property_unit_id');
+    }
 }

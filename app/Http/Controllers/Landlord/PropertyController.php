@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Landlord;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\NotificationController;
 use App\Http\Requests\Landlord\StorePropertyManagerRequest;
 use App\Http\Requests\Landlord\StorePropertyRequest;
 use App\Http\Requests\Landlord\StorePropertyTenantRequest;
@@ -13,6 +14,7 @@ use App\Mail\AddTenantMail;
 use App\Models\DueDate;
 use App\Models\Property;
 use App\Models\PropertyManager;
+use App\Models\PropertySetting;
 use App\Models\PropertyTenant;
 use App\Models\PropertyUnit;
 use App\Models\User;
@@ -70,6 +72,7 @@ class PropertyController extends Controller
     public static function tenant(PropertyTenant $tenant) : PropertyTenant {
         $property = Property::find($tenant->property_id);
         $tenant->property = $property;
+        $tenant->property_unit = PropertyUnit::find($tenant->property_unit_id);
         return $tenant;
     }
 
@@ -91,7 +94,7 @@ class PropertyController extends Controller
     }
 
     public function store(StorePropertyRequest $request){
-        $all = $request->except(['manager_first_name', 'manager_last_name', 'manager_emsil', 'manager_phone']);
+        $all = $request->except(['manager_name', 'manager_email', 'manager_phone']);
         $uuid = "";
         for($i=1; $i<=40; $i++){
             $temp_uuid = Str::uuid();
@@ -118,6 +121,15 @@ class PropertyController extends Controller
             ], 500);
         }
 
+        PropertySetting::create([
+            'property_id' => $property->id,
+            'user_type' => 'landlord',
+            'tenant_pays_commission' => false,
+            'pay_rent_to' => 'landlord'
+        ]);
+
+        NoticeController::land_log_activity($this->user->id, "Added Property: {$property->title}", "properties", $property->uuid);
+
         if(!empty($request->manager_email)){
             if(empty($manager = User::where('email', $request->manager_email)->first())){
                 $m_uuid = "";
@@ -142,9 +154,11 @@ class PropertyController extends Controller
                     'uuid' => $m_uuid,
                     'email' => $request->manager_email,
                     'name' => $request->manager_name,
+                    'phone' => $request->manager_phone ?? '',
                     'verification_token' => Str::random(20).time(),
                     'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
-                    'roles' => 'property manager'
+                    'roles' => 'property manager',
+                    'status' => 1
                 ])){
                     $property->delete();
                     return response([
@@ -173,6 +187,7 @@ class PropertyController extends Controller
                 }
             }
             if(empty($tuuid)){
+                $property->delete();
                 return response([
                     'status' => 'failed',
                     'message' => 'Property Upload could not be completed. Please try again later'
@@ -185,27 +200,29 @@ class PropertyController extends Controller
                 'manager_id' => $manager->id,
                 'name' => $manager->name,
                 'email' => $manager->email,
-                'phone' => $manager->phone
+                'phone' => !empty($manager->phone) ? (string)$manager->phone : "",
+                'status' => 1
             ]);
 
-            $user = User::find($this->user->id);
-            if(!str_contains($user->roles, 'landlord')){
-                $user->roles = !empty($user->roles) ? $user->roles.',landord' : 'landlord';
-                $user->save();
-            }
-
             Mail::to($manager)->send(new AddPropertyManagerMail($manager->name, $this->user->name, $new_user, $new_user ? $manager->verification_token : ""));
-
-            return response([
-                'status' => 'success',
-                'message' => 'Property added successfully',
-                'data' => $property
-            ], 200);
+            NotificationController::store('manager', $manager->id, "Added as Property Manager", "You've just been added as the Property Manager to a Property, {$property->title}, owned by ".$this->user->name, "properties", $property->uuid);
+            NoticeController::land_log_activity($this->user->id, "Added Property Manager, {$manager->name}, to Property, {$property->title}", "properties", $property->uuid);
         }
+
+        $user = User::find($this->user->id);
+        if(!str_contains($user->roles, 'landlord')){
+            $user->roles = !empty($user->roles) ? $user->roles.',landord' : 'landlord';
+            $user->save();
+        }
+        return response([
+            'status' => 'success',
+            'message' => 'Property added successfully',
+            'data' => $property
+        ], 200);
     }
 
     public function show($uuid){
-        $property = Property::where('uuid', $uuid)->where('landlord', $this->user->id)->frst();
+        $property = Property::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
         if(empty($property)){
             return response([
                 'status' => 'failed',
@@ -221,7 +238,7 @@ class PropertyController extends Controller
     }
 
     public function store_manager(StorePropertyManagerRequest $request){
-        $property = Property::where('uuid', $request->property->uuid)->first();
+        $property = Property::where('uuid', $request->property_uuid)->first();
         if(empty($property) or ($property->landlord_id != $this->user->id)){
             return response([
                 'status' => 'failed',
@@ -230,7 +247,7 @@ class PropertyController extends Controller
         }
 
         if(!empty($request->email)){
-            if(Property::where('email', $request->email)->where('property_id', $property->id)->count() > 0){
+            if(PropertyManager::where('email', $request->email)->where('property_id', $property->id)->count() > 0){
                 return response([
                     'status' => 'failed',
                     'message' => 'This person already manages this Property'
@@ -300,10 +317,16 @@ class PropertyController extends Controller
             'landlord_id' => $this->user->id,
             'manager_id' => $user->id,
             'name' => $request->name,
-            'phone' => !empty($request->phone) ? $request->phone : ""
+            'phone' => !empty($request->phone) ? $request->phone : "",
+            "email" => $request->email,
+            "status" => 1
         ]);
 
+        NotificationController::store('manager', $user->id, "Added as Property Manager", "You've just been added as the Prperty Manager to a Property, {$property->name}, owned by ".$this->user->name, "properties", $property->uuid);
+
         Mail::to($user)->send(new AddPropertyManagerMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
+
+        NoticeController::land_log_activity($this->user->id, "Added Property Manager, {$manager->name}, to Property, {$property->title}", "properties", $property->uuid);
 
         return response([
             'status' => 'success',
@@ -353,10 +376,16 @@ class PropertyController extends Controller
                 $tenant = self::tenant($tenant);
             }
         }
+
+        return response([
+            'status' => 'success',
+            'message' => 'Tenants fetched successfully',
+            'data' => $tenants
+        ], 200);
     }
 
     public function store_unit(StorePropertyUnitRequest $request, $uuid){
-        $property = Property::where('uuid', $request->property->uuid)->first();
+        $property = Property::where('uuid', $uuid)->first();
         if(empty($property) or ($property->landlord_id != $this->user->id)){
             return response([
                 'status' => 'failed',
@@ -380,15 +409,18 @@ class PropertyController extends Controller
             ], 500);
         }
         $all = $request->all();
+        $all['uuid'] = $uuid;
         $all['property_id'] = $property->id;
         $all['landlord_id'] = $this->user->id;
 
         if(!$unit = PropertyUnit::create($all)){
             return response([
                 'status' => 'failed',
-                'message' => 'Unt Addition Failed. Please try again later'
+                'message' => 'Unit Addition Failed. Please try again later'
             ], 500);
         }
+
+        NoticeController::land_log_activity($this->user->id, "Added a Unit, {$unit->unit_name} to Property, {$property->title}", "property_units", $unit->uuid);
 
         return response([
             'status' => 'success',
@@ -399,6 +431,7 @@ class PropertyController extends Controller
 
     public function store_tenant(StorePropertyTenantRequest $request, $uuid){
         $unit = PropertyUnit::where('uuid', $uuid)->first();
+        $property = Property::find($unit->property_id);
         if(empty($unit) or ($unit->landlord_id != $this->user->id)){
             return response([
                 'status' => 'failed',
@@ -434,6 +467,7 @@ class PropertyController extends Controller
                 $user = User::create([
                     'name' => $request->name,
                     'email' => $request->email,
+                    'phone' => !empty($request->phone) ? $request->phone : "",
                     'verification_token' => Str::random(20).time(),
                     'verification_token_expiry' => date('Y-m-d H:i:s', time() + 60 * 60 * 24 * 7),
                     'roles' => 'tenant',
@@ -473,21 +507,21 @@ class PropertyController extends Controller
             ], 500);
         }
 
-        $within = PropertyTenant::where('property_unit_id', $request->property_unit_id);
+        $within = PropertyTenant::where('property_unit_id', $unit->id);
         if($within->where('lease_start', '<=', $request->lease_start)->where('lease_end', '>=', $request->lease_start)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
                 'message' => 'The tenancy period is overlapping that of another Tenant'
             ], 409);
         }
         if($within->where('lease_start', '<=', $request->lease_end)->where('lease_end', '>=', $request->lease_end)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
                 'message' => 'The tenancy period is overlapping that of another Tenant'
             ], 409);
         }
-        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->scount() > 0){
-            return request([
+        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->count() > 0){
+            return response([
                 'status' => 'failed',
                 'message' => 'The tenancy period is overlapping that of another Tenant'
             ], 409);
@@ -499,6 +533,8 @@ class PropertyController extends Controller
         $all['uuid'] = $tuuid;
         if(($today >= $request->lease_start) and ($today <= $request->lease_end)){
             $current = true;
+            $unit->occupation_status = 'occupied';
+            $unit->save();
         }
         $all['current_tenant'] = $current;
         $all['user_id'] = isset($user) ? $user->id : null;
@@ -529,7 +565,12 @@ class PropertyController extends Controller
             ]);
         }
 
-        Mail::to($user)->send(new AddTenantMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
+        if(!empty($request->email)){
+            Mail::to($user)->send(new AddTenantMail($user->name, $this->user->name, $new_user, $new_user ? $user->verification_token : ""));
+            NotificationController::store('tenant', $user->id, 'Added as a Tenant', "You have been added as a Tenant to the Apartment ".$property->title." - ".$unit->unit_name." owned by {$this->user->name}", "apartments", $tenant->uuid);
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Added Tenant, {$tenant->name}, to Apartment. {$property->title} - {$unit->unit_name}", "tenants", $tenant->uuid);
 
         return response([
             'status' => 'success',
@@ -555,6 +596,8 @@ class PropertyController extends Controller
             ], 500);
         }
 
+        NoticeController::land_log_activity($this->user->id, "Edited Property Manager Details", "property_managers", $manager->uuid);
+
         return response([
             'status' => 'success',
             'message' => 'Property Manager updated successfully',
@@ -577,23 +620,23 @@ class PropertyController extends Controller
             ], 409);
         }
 
-        $within = PropertyTenant::where('property_unit_id', $request->property_unit_id);
+        $within = PropertyTenant::where('property_unit_id', $tenant->property_unit_id);
         if($within->where('lease_start', '<=', $request->lease_start)->where('lease_end', '>=', $request->lease_start)->where('id', '<>', $tenant->id)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
-                'message' => 'The tenancy period is overlapping that of another Tenant'
+                'message' => 'The tenancy period is overlapping that of another Tenant1'
             ], 409);
         }
         if($within->where('lease_start', '<=', $request->lease_end)->where('lease_end', '>=', $request->lease_end)->where('id', '<>', $tenant->id)->count() > 0){
-            return request([
+            return response([
                 'status' => 'failed',
-                'message' => 'The tenancy period is overlapping that of another Tenant'
+                'message' => 'The tenancy period is overlapping that of another Tenant2'
             ], 409);
         }
-        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->where('id', '<>', $tenant->id)->scount() > 0){
-            return request([
+        if($within->where('lease_start', '>', $request->lease_start)->where('lease_end', '<', $request->lease_end)->where('id', '<>', $tenant->id)->count() > 0){
+            return response([
                 'status' => 'failed',
-                'message' => 'The tenancy period is overlapping that of another Tenant'
+                'message' => 'The tenancy period is overlapping that of another Tenant3'
             ], 409);
         }
 
@@ -602,6 +645,9 @@ class PropertyController extends Controller
         $all = $request->all();
         if(($today >= $request->lease_start) and ($today <= $request->lease_end)){
             $current = true;
+            $unit = PropertyUnit::find($tenant->property_unit_id);
+            $unit->occupation_status = 'occupied';
+            $unit->save();
         }
         $all['current'] = $current;
         if(isset($all['no_of_installments']) and ($all['no_of_installments'] > 1)){
@@ -622,8 +668,20 @@ class PropertyController extends Controller
             if(!empty($due_date)){
                 $due_date->due_date = $tenant->rent_due_date;
                 $due_date->save();
+            } else {
+                DueDate::create([
+                    'landlord_id' => $this->user->id,
+                    'property_tenant_id' => $tenant->id,
+                    'property_id' => $tenant->property_id,
+                    'property_unit_id' => $tenant->property_unit_id,
+                    'due_date' => $tenant->rent_due_date,
+                    'purpose' => 'Rent Due Date',
+                    'cash_payment' => true
+                ]);
             }
         }
+
+        NoticeController::land_log_activity($this->user->id, "Edited Tenant Details", "tenants", $tenant->uuid);
 
         return response([
             'status' => 'success',

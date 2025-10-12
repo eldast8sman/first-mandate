@@ -22,7 +22,7 @@ class UserEmailVerificationMail extends Mailable
     public function __construct($name, $token)
     {
         $this->name = $name;
-        $this->link = env('FRONTEND_URL').'/verify-email/'.$token;
+        $this->link = env('FRONTEND_URL').'/verify-user/'.$token;
     }
 
     /**
@@ -31,7 +31,7 @@ class UserEmailVerificationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Email Verification',
+            subject: 'Welcome to 1stMandate',
         );
     }
 

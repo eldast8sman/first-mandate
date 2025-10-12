@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('purpose');
             $table->text('remarks')->nullable();
             $table->boolean('cash_payment')->default(0);
-            $table->integer('status');
+            $table->integer('status')->default(1);
             $table->timestamps();
         });
     }

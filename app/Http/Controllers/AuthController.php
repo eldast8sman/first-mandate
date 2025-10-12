@@ -2,19 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\AccountActivationRequest;
-use App\Http\Requests\ActivateAccountRequest;
-use App\Http\Requests\ForgotPasswordRequest;
-use App\Http\Requests\LoginRequest;
-use App\Http\Requests\ResetPasswordRequest;
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\UpdateUserRequest;
-use App\Mail\UserEmailVerificationMail;
-use App\Mail\UserPasswordResetMail;
 use App\Models\User;
+use Illuminate\Support\Str;
+use App\Http\Requests\LoginRequest;
+use App\Mail\UserPasswordResetMail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
+use App\Http\Requests\StoreUserRequest;
+use App\Mail\UserEmailVerificationMail;
+use App\Http\Requests\UpdateUserRequest;
+use App\Models\CustomerFlutterwaveToken;
+use App\Http\Requests\ResetPasswordRequest;
+use App\Http\Requests\UpdateSectionRequest;
+use App\Http\Requests\ForgotPasswordRequest;
+use App\Http\Requests\ActivateAccountRequest;
+use App\Http\Requests\AccountActivationRequest;
 
 class AuthController extends Controller
 {
@@ -83,6 +85,8 @@ class AuthController extends Controller
         $user->prev_login = !empty($user->last_login) ? $user->last_login : date('Y-m-d H:i:s');
         $user->last_login = date('Y-m-d H:i:s');
         $user->save();
+        $this->clear_flutterwave_tokens($user->id);
+        $user->sections = json_decode($user->sections, true) ?? [];
 
         $authorization = [
             'token' => $token,
@@ -93,6 +97,15 @@ class AuthController extends Controller
         $user->authorization = $authorization;
 
         return $user;
+    }
+
+    private function clear_flutterwave_tokens($user_id){
+        $tokens = CustomerFlutterwaveToken::where('user_id', $user_id)->where('token_expiry', '<', date('Y-m-d'))->get();
+        if(!empty($tokens)){
+            foreach($tokens as $token){
+                $token->delete();
+            }
+        }
     }
 
     public function login(LoginRequest $request){
@@ -246,20 +259,96 @@ class AuthController extends Controller
         ], 200);
     }
 
-    public static function user(){
+    public static function user() : User
+    {
         return auth('user-api')->user();
     }
 
     public function me(){
+        $user = self::user();
+        $user->sections = json_decode($user->sections, true);
         return response([
             'status' => 'success',
             'message' => 'User details fetched successfully',
-            'data' => self::user()
+            'data' => $user
         ], 200);
     }
 
-    public function update(UpdateUserRequest $request, User $user)
+    public function update_sections(UpdateSectionRequest $request)
     {
-        //
+        $user = self::user();
+        if(empty($user)){
+            return response([
+                'status' => 'failed',
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $user->sections = json_encode($request->sections);
+        $user->save();
+        $user->sections = json_decode($user->sections, true);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Sections updated successfully',
+            'data' => $user
+        ], 200);
+    }
+
+    public function switch_section($section)
+    {
+        $user = self::user();
+        if(empty($user)){
+            return response([
+                'status' => 'failed',
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $sections = json_decode($user->sections, true);
+        if(!in_array($section, $sections)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Section not available'
+            ], 422);
+        }
+
+        $user->section = $section;
+        $user->save();
+        $user->sections = json_decode($user->sections, true);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Section switched successfully',
+            'data' => $user
+        ], 200);
+    }
+
+    public function update(UpdateUserRequest $request)
+    {
+        $user = self::user();
+        if(empty($user)){
+            return response([
+                'status' => 'failed',
+                'message' => 'User not found'
+            ], 404);
+        }
+
+        $user->name = $request->name;
+        $user->email = $request->email;
+        if($request->has('phone')){
+            $user->phone = $request->phone;
+        }
+        if($request->has('sections')){
+            $user->sections = json_encode($request->sections);
+        }
+        $user->save();
+        $user->sections = json_decode($user->sections, true);
+
+        return response([
+            'status' => 'success',
+            'message' => 'User details updated successfully',
+            'data' => $user
+        ], 200);
     }
 }
