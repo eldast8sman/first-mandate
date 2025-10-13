@@ -106,6 +106,7 @@ Route::middleware('auth:user-api')->group(function(){
         Route::controller(RentPaymentController::class)->prefix('apartment-rents')->group(function(){
             Route::get('/{uuid}/rent-details', 'fetch_rent')->name('tenant.rent.fetch');
             Route::post('/{uuid}/initiate-payment', 'initiate_rent_payment')->name('tenant.rent.initiatePayment');
+            Route::get('/{uuid}', 'rent_payments')->name('tenant.rent.payments');
         });
     });
 
