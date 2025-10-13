@@ -113,7 +113,7 @@ class FlutterwaveController extends Controller
         $payload = [
             'tx_ref' => $reference,
             'amount' => $amount,
-            'redirect_url' => env('APP_URL').'/payments/verify',
+            'redirect_url' => env('FRONTEND_URL').'/payments/verify',
             'currency' => 'NGN',
             'customer' => [
                 'name' => $user->name,
