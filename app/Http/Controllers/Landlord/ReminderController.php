@@ -45,7 +45,10 @@ class ReminderController extends Controller
         $all['user_id'] = $this->user->id;
         $all['recipient_type'] = 'landlord';
         $all['recipient_id'] = $this->user->id;
-        $all['frequency_type'] = 'one_time';
+        $all['reminder_time'] = $request->reminder_time ?? '09:00';
+        if($all['frequency_type'] == 'one time'){
+            $all['recurring_limit'] = 1;
+        }
 
         if(!$reminder = Reminder::create($all)){
             return response([

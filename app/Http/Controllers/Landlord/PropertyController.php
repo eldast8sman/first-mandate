@@ -533,7 +533,7 @@ class PropertyController extends Controller
         $all['uuid'] = $tuuid;
         if(($today >= $request->lease_start) and ($today <= $request->lease_end)){
             $current = true;
-            $unit->occupation_status = 'occupied';
+            $unit->occupation_status = 'Occupied';
             $unit->save();
         }
         $all['current_tenant'] = $current;
@@ -549,7 +549,7 @@ class PropertyController extends Controller
         if(!$tenant = PropertyTenant::create($all)){
             return response([
                 'status' => 'failed',
-                'message' => 'Tenanr addition failed'
+                'message' => 'Tenant addition failed'
             ], 500);
         }
 

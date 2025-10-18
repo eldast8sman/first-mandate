@@ -24,3 +24,6 @@ Route::get('/bvn-redirect', function(){
 Route::get('/payments/verify', function(){
     return view('payments-verify');
 });
+
+// Cron job route for reminder emails
+Route::get('/cron/send-reminder-emails', [App\Http\Controllers\CronController::class, 'sendReminderEmails']);

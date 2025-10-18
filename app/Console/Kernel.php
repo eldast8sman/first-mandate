@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Http\Controllers\CronController;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -13,6 +14,12 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
+        
+        // Schedule reminder emails to run every 6 hours
+        $schedule->call(function () {
+            $cron = new CronController();
+            $cron->sendReminderEmails();
+        })->everySixHours()->name('send-reminder-emails');
     }
 
     /**

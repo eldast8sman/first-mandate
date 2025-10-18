@@ -1,3 +1,57 @@
+@extends('emails.layouts.app')
+
+@section('content')
+  <div id="user-content" style="margin: 17px 0; text-align: center">
+    <div id="logo" style="margin: 13px 0; text-align: center">
+      <img
+        src="https://i.postimg.cc/RFnKCmhw/welcome.png"
+        alt="1st Mandate"
+      />
+    </div>
+    <p
+      style="
+        text-align: center;
+        font-size: 16px;
+        font-weight: 100;
+        line-height: 28px;
+        margin: 0;
+      "
+    >
+      You just received a Notice from your Landlord
+    </p>
+  </div>
+  <div id="user-content" style="margin: 17px 0; text-align: center">
+    <p
+      style="
+        text-align: center;
+        font-size: 16px;
+        font-weight: 100;
+        line-height: 28px;
+        margin: 0;
+      "
+    >
+      Dear {{ $name }},
+    </p>
+    <p
+      style="
+        text-align: center;
+        font-size: 16px;
+        font-weight: 100;
+        line-height: 28px;
+        margin: 0;
+      "
+    >
+      Welcome to 1st Mandate! We're thrilled to have you on board. 
+      You have been added as the Landlord of a Property managed by {{ $manager }} on this Platform.
+      <br>
+      @if ($new_user)
+      In order to have full access to your account, please click on the link below
+      @else
+      Login to your Account to have more details  
+      @endif
+    </p>
+  </div>
+@endsection
 
 <!doctype html>
 <html>

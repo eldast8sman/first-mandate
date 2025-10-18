@@ -1,24 +1,23 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\FlutterwaveController;
-use App\Http\Controllers\Landlord\NoticeController as LandlordNoticeController;
-use App\Http\Controllers\Landlord\PropertyController;
-use App\Http\Controllers\Landlord\PropertySettingController;
-use App\Http\Controllers\Landlord\ReminderController;
-use App\Http\Controllers\Manager\NoticeController;
-use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
-use App\Http\Controllers\Manager\PropertySettingController as ManagerPropertySettingController;
-use App\Http\Controllers\Manager\ReminderController as ManagerReminderController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\Tenant\ApartmentController;
-use App\Http\Controllers\Tenant\NoticeController as TenantNoticeController;
-use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
-use App\Http\Controllers\Tenant\RentPaymentController;
-use App\Http\Controllers\WalletController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use PharIo\Manifest\AuthorCollection;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CronController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\FlutterwaveController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Manager\NoticeController;
+use App\Http\Controllers\Tenant\ApartmentController;
+use App\Http\Controllers\Landlord\PropertyController;
+use App\Http\Controllers\Landlord\ReminderController;
+use App\Http\Controllers\Tenant\RentPaymentController;
+use App\Http\Controllers\Landlord\PropertySettingController;
+use App\Http\Controllers\Tenant\NoticeController as TenantNoticeController;
+use App\Http\Controllers\Landlord\NoticeController as LandlordNoticeController;
+use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
+use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
+use App\Http\Controllers\Manager\ReminderController as ManagerReminderController;
+use App\Http\Controllers\Manager\PropertySettingController as ManagerPropertySettingController;
 
 
 /*
@@ -167,4 +166,8 @@ Route::middleware('auth:user-api')->group(function(){
 Route::controller(FlutterwaveController::class)->prefix('flutterwave')->group(function(){
     Route::post('/webhook', 'webhook');
     Route::post('/transfer-callback', 'transfer_callback');
+});
+
+Route::controller(CronController::class)->prefix('cron')->group(function(){
+    Route::get('/send-reminder-emails', 'sendReminderEmails');
 });
