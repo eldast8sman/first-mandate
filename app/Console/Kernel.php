@@ -20,6 +20,12 @@ class Kernel extends ConsoleKernel
             $cron = new CronController();
             $cron->sendReminderEmails();
         })->everySixHours()->name('send-reminder-emails');
+        
+        // Schedule notice reminder emails to run daily at 9:00 AM
+        $schedule->call(function () {
+            $cron = new CronController();
+            $cron->sendNoticeReminderEmails();
+        })->everyTwoMinutes()->name('send-notice-reminder-emails');
     }
 
     /**

@@ -170,4 +170,5 @@ Route::controller(FlutterwaveController::class)->prefix('flutterwave')->group(fu
 
 Route::controller(CronController::class)->prefix('cron')->group(function(){
     Route::get('/send-reminder-emails', 'sendReminderEmails');
+    Route::get('/send-notice-reminder-emails', 'sendNoticeReminderEmails');
 });
