@@ -73,7 +73,7 @@
   </div>
 
   <div style="text-align: center; margin: 30px 0;">
-    <a href="#" style="
+    <a href="{{ env('FRONTEND_URL') }}" style="
       background-color: #3498db; 
       color: white; 
       padding: 12px 25px; 

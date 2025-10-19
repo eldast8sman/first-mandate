@@ -25,7 +25,7 @@ class Kernel extends ConsoleKernel
         $schedule->call(function () {
             $cron = new CronController();
             $cron->sendNoticeReminderEmails();
-        })->everyTwoMinutes()->name('send-notice-reminder-emails');
+        })->dailyAt('09:00')->name('send-notice-reminder-emails');
     }
 
     /**
