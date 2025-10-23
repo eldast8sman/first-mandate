@@ -18,7 +18,7 @@ use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
 use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
 use App\Http\Controllers\Manager\ReminderController as ManagerReminderController;
 use App\Http\Controllers\Manager\PropertySettingController as ManagerPropertySettingController;
-
+use App\Http\Controllers\UtilityBillController;
 
 /*
 |--------------------------------------------------------------------------
@@ -160,6 +160,16 @@ Route::middleware('auth:user-api')->group(function(){
         Route::put('/account-details', 'set_account_details');
         Route::post('/withdraw', 'withdraw_funds');
         Route::get('/transaction-history', 'transaction_history');
+    });
+
+    Route::controller(UtilityBillController::class)->prefix('utility-bills')->group(function(){
+        Route::get('/billers', 'fetch_billers');
+        Route::get('/billers/{biller_code}/bills', 'fetch_bills');
+        Route::post('/validate-customer', 'validate_customer');
+        Route::get('/', 'index');
+        Route::post('/electricity-bills', 'pay_electreicity_bill');
+        Route::get('/{uuid}', 'show');
+        Route::get('/electricity-bills/{uuid}/check-status', 'check_electricity_bill_status');
     });
 });
 

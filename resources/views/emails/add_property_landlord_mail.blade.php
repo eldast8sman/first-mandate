@@ -1,7 +1,7 @@
 @extends('emails.layouts.app')
 
 @section('content')
-<div id="user-content" style="margin: 17px 0; text-align: center">
+  <div id="user-content" style="margin: 17px 0; text-align: center">
     <div id="logo" style="margin: 13px 0; text-align: center">
       <img
         src="https://i.postimg.cc/RFnKCmhw/welcome.png"
