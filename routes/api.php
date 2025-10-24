@@ -167,7 +167,7 @@ Route::middleware('auth:user-api')->group(function(){
         Route::get('/billers/{biller_code}/bills', 'fetch_bills');
         Route::post('/validate-customer', 'validate_customer');
         Route::get('/', 'index');
-        Route::post('/electricity-bills', 'pay_electreicity_bill');
+        Route::post('/electricity-bills', 'pay_electricity_bill');
         Route::get('/{uuid}', 'show');
         Route::get('/electricity-bills/{uuid}/check-status', 'check_electricity_bill_status');
     });

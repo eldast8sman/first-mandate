@@ -536,7 +536,7 @@ class FlutterwaveController extends Controller
     }
 
     public function get_electricity_billers(){
-        $billers = $this->perform_get_curl('/bills/UTILITYBILLS/billers?country=NG');
+        $billers = $this->perform_get_curl('/bills/CABLEBILLS/billers?country=NG');
         if(!$billers){
             return false;
         }
