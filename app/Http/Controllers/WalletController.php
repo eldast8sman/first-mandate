@@ -338,6 +338,7 @@ class WalletController extends Controller
 
         $wallet->balance = $wallet->balance - $amount;
         $wallet->total_debit = $wallet->total_debit + $amount;
+        $wallet->save();
 
         $trans = WalletTransaction::create([
             'user_id' => $this->user->id,

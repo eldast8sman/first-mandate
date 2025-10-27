@@ -68,6 +68,8 @@ class PropertySettingController extends Controller
         $setting->pay_rent_to = $request->pay_rent_to;
         $setting->save();
 
+        NoticeController::land_log_activity($this->user->id, "Updated Property Setting for: {$property->title}", "properties", $property->uuid);
+
         return response([
             'status' => 'success',
             'message' => 'Property setting updated successfully',

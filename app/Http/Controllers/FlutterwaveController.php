@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Models\WalletTransaction;
 use App\Models\FlutterwaveWebhook;
 use App\Models\CustomerFlutterwaveToken;
+use App\Models\ElectricityBillPayment;
 
 class FlutterwaveController extends Controller
 {
@@ -113,7 +114,7 @@ class FlutterwaveController extends Controller
         $payload = [
             'tx_ref' => $reference,
             'amount' => $amount,
-            'redirect_url' => env('APP_URL').'/payments/verify',
+            'redirect_url' => env('FRONTEND_URL').'/payments/verify',
             'currency' => 'NGN',
             'customer' => [
                 'name' => $user->name,
@@ -532,5 +533,112 @@ class FlutterwaveController extends Controller
             $tranx->value_given = 1;
             $tranx->save();
         }
+    }
+
+    public function get_electricity_billers(){
+        $billers = $this->perform_get_curl('/bills/CABLEBILLS/billers?country=NG');
+        if(!$billers){
+            return false;
+        }
+
+        if($billers->status != 'success'){
+            $this->errors = $billers->message;
+            return false;
+        }
+
+        return $billers->data;
+    }
+
+    public function get_bills_information($biller_code){
+        $bills = $this->perform_get_curl('/billers/'.$biller_code.'/items');
+        if(!$bills){
+            return false;
+        }
+        if($bills->status != 'success'){
+            $this->errors = $bills->message;
+            return false;
+        }
+
+        return $bills->data;
+    }
+
+    public function validate_customer($item_code, $identifier){
+        $url = '/bill-items/'.$item_code.'/validate?customer='.$identifier;
+        $validate = $this->perform_get_curl($url);
+        if(!$validate){
+            return false;
+        }
+
+        if($validate->status != 'success'){
+            $this->errors = $validate->message;
+            return false;
+        }
+
+        return $validate->data;
+    }
+
+    public function pay_bill($ref, $biller_code, $product_code, $customer_identifier, $amount){
+        $url = '/billers/'.$biller_code.'/items/'.$product_code.'/payment';
+        $data = [
+            'reference' => $ref,
+            'country' => 'NG',
+            'customer_id' => $customer_identifier,
+            'amount' => $amount,
+            'callback_url' => env('APP_URL').'/api/flutterwave/bill-payment-callback/'.$ref
+        ];
+
+        if(!$pay = $this->perform_post_curl($url, $data)){
+            return false;
+        }
+
+        if($pay->status != 'success'){
+            $this->errors = $pay->message;
+            return false;
+        }
+
+        return [
+            'request' => [
+                'route' => $url,
+                'data' => $data
+            ],
+            'response' => $pay->data
+        ];
+    }
+
+    public function bill_payment_status($reference){
+        $url = '/bills/'.$reference;
+        $status = $this->perform_get_curl($url);
+        if(!$status){
+            return false;
+        }
+
+        if($status->status != 'success'){
+            $this->errors = $status->message;
+            return false;
+        }
+
+        return $status->data;
+    }
+
+    public function bill_payment_callback(Request $request, $reference){
+        $webhook = FlutterwaveWebhook::create([
+            'webhook' => json_encode($request->all()),
+            'event' => isset($request->event) ? $request->event : null,
+            'trans_reference' => isset($request->data['tx_ref']) ? $request->data['tx_ref'] : null,
+            'amount' => isset($request->data['amount']) ? $request->data['amount'] : null
+        ]);
+
+        $bill_payment = ElectricityBillPayment::where('reference', $reference)->first();
+        if(empty($bill_payment)){
+            return response([], 200);
+        }
+
+        $webhook->user_id = $bill_payment->user_id;
+        $webhook->save();
+
+        $controller = new UtilityBillController();
+        $controller->update_electricity_bill_payment_status($bill_payment);
+
+        return response([], 200);
     }
 }

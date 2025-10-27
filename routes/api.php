@@ -1,25 +1,24 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\FlutterwaveController;
-use App\Http\Controllers\Landlord\NoticeController as LandlordNoticeController;
-use App\Http\Controllers\Landlord\PropertyController;
-use App\Http\Controllers\Landlord\PropertySettingController;
-use App\Http\Controllers\Landlord\ReminderController;
-use App\Http\Controllers\Manager\NoticeController;
-use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
-use App\Http\Controllers\Manager\PropertySettingController as ManagerPropertySettingController;
-use App\Http\Controllers\Manager\ReminderController as ManagerReminderController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\Tenant\ApartmentController;
-use App\Http\Controllers\Tenant\NoticeController as TenantNoticeController;
-use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
-use App\Http\Controllers\Tenant\RentPaymentController;
-use App\Http\Controllers\WalletController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use PharIo\Manifest\AuthorCollection;
-
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CronController;
+use App\Http\Controllers\WalletController;
+use App\Http\Controllers\FlutterwaveController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Manager\NoticeController;
+use App\Http\Controllers\Tenant\ApartmentController;
+use App\Http\Controllers\Landlord\PropertyController;
+use App\Http\Controllers\Landlord\ReminderController;
+use App\Http\Controllers\Tenant\RentPaymentController;
+use App\Http\Controllers\Landlord\PropertySettingController;
+use App\Http\Controllers\Tenant\NoticeController as TenantNoticeController;
+use App\Http\Controllers\Landlord\NoticeController as LandlordNoticeController;
+use App\Http\Controllers\Tenant\ReminderController as TenantReminderController;
+use App\Http\Controllers\Manager\PropertyController as ManagerPropertyController;
+use App\Http\Controllers\Manager\ReminderController as ManagerReminderController;
+use App\Http\Controllers\Manager\PropertySettingController as ManagerPropertySettingController;
+use App\Http\Controllers\UtilityBillController;
 
 /*
 |--------------------------------------------------------------------------
@@ -106,6 +105,7 @@ Route::middleware('auth:user-api')->group(function(){
         Route::controller(RentPaymentController::class)->prefix('apartment-rents')->group(function(){
             Route::get('/{uuid}/rent-details', 'fetch_rent')->name('tenant.rent.fetch');
             Route::post('/{uuid}/initiate-payment', 'initiate_rent_payment')->name('tenant.rent.initiatePayment');
+            Route::get('/{uuid}', 'rent_payments')->name('tenant.rent.payments');
         });
     });
 
@@ -161,9 +161,24 @@ Route::middleware('auth:user-api')->group(function(){
         Route::post('/withdraw', 'withdraw_funds');
         Route::get('/transaction-history', 'transaction_history');
     });
+
+    Route::controller(UtilityBillController::class)->prefix('utility-bills')->group(function(){
+        Route::get('/billers', 'fetch_billers');
+        Route::get('/billers/{biller_code}/bills', 'fetch_bills');
+        Route::post('/validate-customer', 'validate_customer');
+        Route::get('/', 'index');
+        Route::post('/electricity-bills', 'pay_electricity_bill');
+        Route::get('/{uuid}', 'show');
+        Route::get('/electricity-bills/{uuid}/check-status', 'check_electricity_bill_status');
+    });
 });
 
 Route::controller(FlutterwaveController::class)->prefix('flutterwave')->group(function(){
     Route::post('/webhook', 'webhook');
     Route::post('/transfer-callback', 'transfer_callback');
+});
+
+Route::controller(CronController::class)->prefix('cron')->group(function(){
+    Route::get('/send-reminder-emails', 'sendReminderEmails');
+    Route::get('/send-notice-reminder-emails', 'sendNoticeReminderEmails');
 });

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Requests\Landlord;
+namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StorePropertyRequest extends FormRequest
+class PayElectricityBillRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,13 +22,12 @@ class StorePropertyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => 'required|string',
-            'address' => 'required|string',
-            'city' => 'required|string',
-            'state' => 'required|string',
-            'manager_name' => 'required_with:manager_email|string|nullable',
-            'manager_email' => 'string|email|nullable',
-            'manager_phone' => 'string|nullable'
+            'biller' => 'required|string',
+            'biller_code' => 'required|string',
+            'item' => 'required|string',
+            'item_code' => 'required|string',
+            'identifier' => 'required|string',
+            'amount' => 'required|numeric|min:100',
         ];
     }
 }

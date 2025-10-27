@@ -17,7 +17,7 @@
         margin: 0;
       "
     >
-      You just received a Notice from your Landlord
+      Utility Bill Payment Successful
     </p>
   </div>
   <div id="user-content" style="margin: 17px 0; text-align: center">
@@ -41,7 +41,7 @@
         margin: 0;
       "
     >
-      Your Landlord, {{ $landlord }} just sent you a notice on the 1st Mandate App.   
+        Your Electricity Bill Payment was successful. Please find below the details of your payment.
     </p>
   </div>
   <div id="user-content" style="margin: 17px 0; text-align: center">
@@ -53,27 +53,41 @@
       border-left: 4px solid #000;
     ">
       
-      <p style="
-          text-align: center;
-          font-size: 16px;
-          font-weight: 100;
-          line-height: 28px;
-          margin: 10px 0;
-        ">
-          <strong>Notice:</strong> {{ $notice }}
-      </p>
-      
-      <p style="
-        text-align: center;
-        font-size: 16px;
-        font-weight: 100;
-        line-height: 28px;
-        margin: 10px 0;
-      ">
-        You can check your notices tab on 1st Mandate for more details.
-        <br>
-      <a href="{{ $link }}">More Details</a>
-      </p>
+        <p style="
+            text-align: center;
+            font-size: 16px;
+            font-weight: 100;
+            line-height: 28px;
+            margin: 5px 0;
+            "><strong>Biller:</strong> {{ $biller }}</p>
+        <p style="
+            text-align: center;
+            font-size: 16px;
+            font-weight: 100;
+            line-height: 28px;
+            margin: 5px 0;
+            "><strong>Customer Name:</strong> {{ $customer_name }}</p>
+        <p style="
+            text-align: center;
+            font-size: 16px;
+            font-weight: 100;
+            line-height: 28px;
+            margin: 5px 0;
+            "><strong>Customer Identifier:</strong> {{ $customer_identifier }}</p>
+        <p style="
+            text-align: center;
+            font-size: 16px;
+            font-weight: 100;
+            line-height: 28px;
+            margin: 5px 0;
+            "><strong>Amount Paid:</strong> {{ $amount }}</p>
+        <p style="
+            text-align: center;
+            font-size: 16px;
+            font-weight: 100;
+            line-height: 28px;
+            margin: 5px 0;
+            "><strong>Token:</strong> {{ $token }}</p>
     </div>
   </div>
   <div id="user-content" style="margin: 17px 0; text-align: center">

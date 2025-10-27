@@ -55,7 +55,6 @@ class ApartmentController extends Controller
     }
 
     public function index(){
-        dd($this->user);
         $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
         $tenancies = PropertyTenant::where('user_id', $this->user->id)->paginate($limit);
         if(empty($tenancies)){

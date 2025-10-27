@@ -313,6 +313,11 @@ class RentPaymentController extends Controller
                 'status' => 1
             ]);
 
+            $payment->status = 1;
+            $payment->save();
+
+            self::update_rent_payment($payment);
+
             $payee = $settings['payee'];
             $payee_wallet = $wal_controller->confirm_wallet($payee->id);
             $payee_wallet->total_credit += $amount;
@@ -370,5 +375,34 @@ class RentPaymentController extends Controller
         }
 
 
+    }
+
+    public function rent_payments($uuid){
+        $tenancy = PropertyTenant::where('uuid', $uuid)->where('user_id', $this->user->id)->first();
+        if(empty($tenancy)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Tenancy not found',
+            ], 404);
+        }
+
+        $limit = !empty($_GET['limit']) ? (int)$_GET['limit'] : 10;
+        $payments = RentPayment::where('tenancy_id', $tenancy->id)->paginate($limit);
+        if(empty($payments)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No rent payments found',
+                'data' => []
+            ], 200);
+        }
+        foreach($payments as $payment){
+            $payment->installments = RentPaymentInstallment::where('rent_payment_id', $payment->id)->get();
+        }
+
+        return response([
+            'status' => 'success',
+            'message' => 'Rent payments fetched successfully',
+            'data' => $payments
+        ], 200);
     }
 }

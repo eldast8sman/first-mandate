@@ -25,7 +25,9 @@ class StoreReminderRequest extends FormRequest
             'reminder_type' => 'required|string',
             'short_description' => 'required|string',
             'next_reminder_date' => 'required|date',
-            'reminder_time' => 'string|nullable'
+            'reminder_time' => 'string|nullable',
+            'frequency_type' => 'required|string|in:one time,recurring',
+            'recurring_type' => 'string|required_if:frequency_type,recurring|in:daily,weekly,biweekly,monthly,quarterly,biannually,annually|nullable',
         ];
     }
 }
