@@ -9,6 +9,7 @@ use App\Http\Requests\Manager\StoreLandlordRequest;
 use App\Http\Requests\Manager\StorePropertyRequest;
 use App\Http\Requests\Manager\StorePropertyTenantRequest;
 use App\Http\Requests\Manager\StorePropertyUnitRequest;
+use App\Http\Requests\Manager\UpdatePropertyRequest;
 use App\Mail\AddPropertyLandlordMail;
 use App\Mail\ManagerAddTenantMail;
 use App\Models\DueDate;
@@ -214,6 +215,31 @@ class PropertyController extends Controller
         ], 200);
     }
 
+    public function update_property(UpdatePropertyRequest $request, $uuid){
+        $property = Property::where('uuid', $uuid)->first();
+        if(empty($property) or (PropertyManager::where('manager_id', $this->user->id)->where('property_id', $property->id)->count() < 1)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property was fetched'
+            ], 404);
+        }
+        $all = $request->all();
+        if(!$property->update($all)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Property Update failed'
+            ], 500);
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Edited Property Details: {$property->title}", "properties", $property->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Property updated successfully',
+            'data' => $property
+        ], 200);
+    }
+
     public function store_unit(StorePropertyUnitRequest $request, $uuid){
         $property = Property::where('uuid', $uuid)->first();
         if(empty($property) or (PropertyManager::where('manager_id', $this->user->id)->where('property_id', $property->id)->count() < 1)){
@@ -256,6 +282,67 @@ class PropertyController extends Controller
             'status' => 'success',
             'message' => 'Property Unit added successfully',
             'data' => $unit
+        ], 200);
+    }
+
+    public function update_unit(StorePropertyUnitRequest $request, $uuid){
+        $unit = PropertyUnit::where('uuid', $uuid)->first();
+        if(empty($unit) or (PropertyManager::where('manager_id', $this->user->id)->where('property_id', $unit->property_id)->count() < 1)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property Unit was fetched'
+            ], 404);
+        }
+
+        $all = $request->all();
+        if(!$unit->update($all)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Failed to update Property Unit'
+            ], 500);
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Edited Property Unit Details, {$unit->unit_name}", "property_units", $unit->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Property Unit updated successfully',
+            'data' => $unit
+        ], 200);
+    }
+
+    public function delete_unit($uuid){
+        $unit = PropertyUnit::where('uuid', $uuid)->first();
+        if(empty($unit) or (PropertyManager::where('manager_id', $this->user->id)->where('property_id', $unit->property_id)->count() < 1)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property Unit was fetched'
+            ], 404);
+        }
+
+        // Check if property has a landlord and if the landlord's account is verified and active
+        if(!empty($unit->landlord_id)){
+            $landlord = User::find($unit->landlord_id);
+            if(!empty($landlord) && $landlord->email_verified == 1 && $landlord->status == 1){
+                return response([
+                    'status' => 'failed',
+                    'message' => 'Cannot delete property unit. The landlord account is verified and active. Only the landlord can delete this property unit.'
+                ], 403);
+            }
+        }
+        
+        if(!$unit->delete()){
+            return response([
+                'status' => 'failed',
+                'message' => 'Property Unit Deletion failed'
+            ], 500);
+        }
+        
+        NoticeController::land_log_activity($this->user->id, "Deleted Property Unit, {$unit->unit_name}", "property_units", $unit->uuid);
+        
+        return response([
+            'status' => 'success',
+            'message' => 'Property Unit deleted successfully'
         ], 200);
     }
 
@@ -606,6 +693,42 @@ class PropertyController extends Controller
             'status' => 'success',
             'message' => 'Tenant updated successfully',
             'data' => $tenant
+        ], 200);
+    }
+
+    public function delete_property($uuid){
+        $property = Property::where('uuid', $uuid)->first();
+        if(empty($property) or (PropertyManager::where('manager_id', $this->user->id)->where('property_id', $property->id)->count() < 1)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property was fetched'
+            ], 404);
+        }
+
+        // Check if property has a landlord and if the landlord's account is verified and active
+        if(!empty($property->landlord_id)){
+            $landlord = User::find($property->landlord_id);
+            if(!empty($landlord) && $landlord->email_verified == 1 && $landlord->status == 1){
+                return response([
+                    'status' => 'failed',
+                    'message' => 'Cannot delete property. The landlord account is verified and active. Only the landlord can delete this property.'
+                ], 403);
+            }
+        }
+
+        // Delete the property
+        if(!$property->delete()){
+            return response([
+                'status' => 'failed',
+                'message' => 'Property deletion failed'
+            ], 500);
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Deleted Property: {$property->title}", "properties", $property->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Property deleted successfully'
         ], 200);
     }
 }

@@ -9,6 +9,7 @@ use App\Http\Requests\Landlord\StorePropertyManagerRequest;
 use App\Http\Requests\Landlord\StorePropertyRequest;
 use App\Http\Requests\Landlord\StorePropertyTenantRequest;
 use App\Http\Requests\Landlord\StorePropertyUnitRequest;
+use App\Http\Requests\Landlord\UpdatePropertyRequest;
 use App\Mail\AddPropertyManagerMail;
 use App\Mail\AddTenantMail;
 use App\Models\DueDate;
@@ -221,6 +222,56 @@ class PropertyController extends Controller
         ], 200);
     }
 
+    public function update_property(UpdatePropertyRequest $request, $uuid){
+        $property = Property::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
+        if(empty($property)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property was fetched'
+            ], 404);
+        }
+
+        $all = $request->all();
+        if(!$property->update($all)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Property Update failed'
+            ], 500);
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Updated Property Details: {$property->title}", "properties", $property->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Property updated successfully',
+            'data' => $property
+        ], 200);
+    }
+
+    public function delete_property($uuid){
+        $property = Property::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
+        if(empty($property)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property was fetched'
+            ], 404);
+        }
+
+        if(!$property->delete()){
+            return response([
+                'status' => 'failed',
+                'message' => 'Property Deletion failed'
+            ], 500);
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Deleted Property: {$property->title}", "properties", $property->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Property deleted successfully'
+        ], 200);
+    }
+
     public function show($uuid){
         $property = Property::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
         if(empty($property)){
@@ -426,6 +477,53 @@ class PropertyController extends Controller
             'status' => 'success',
             'message' => 'Property Unit added successfully',
             'data' => $unit
+        ], 200);
+    }
+
+    public function update_unit(StorePropertyUnitRequest $request, $uuid){
+        $unit = PropertyUnit::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
+        if(empty($unit)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property Unit was fetched'
+            ], 404);
+        }
+
+        $all = $request->all();
+        if(!$unit->update($all)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Failed to update Property Unit'
+            ], 500);
+        }
+
+        NoticeController::land_log_activity($this->user->id, "Edited Property Unit Details, {$unit->unit_name}", "property_units", $unit->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Property Unit updated successfully',
+            'data' => $unit
+        ], 200);
+    }
+
+    public function delete_unit($uuid){
+        $unit = PropertyUnit::where('uuid', $uuid)->where('landlord_id', $this->user->id)->first();
+        if(empty($unit)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property Unit was fetched'
+            ], 404);
+        }
+        if(!$unit->delete()){
+            return response([
+                'status' => 'failed',
+                'message' => 'Property Unit Deletion failed'
+            ], 500);
+        }
+        NoticeController::land_log_activity($this->user->id, "Deleted Property Unit, {$unit->unit_name}", "property_units", $unit->uuid);
+        return response([
+            'status' => 'success',
+            'message' => 'Property Unit deleted successfully'
         ], 200);
     }
 
