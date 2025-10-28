@@ -53,10 +53,14 @@ Route::middleware('auth:user-api')->group(function(){
         Route::get('/properties', 'index')->name('landlord.property.index');
         Route::post('/properties', 'store')->name('landlord.property.store');
         Route::get('/properties/{uuid}', 'show')->name('landlord.property.show');
+        Route::put('/properties/{uuid}', 'update_property')->name('landlord.property.update');
+        Route::delete('/properties/{uuid}', 'delete_property')->name('landlord.property.delete');
         Route::post('/property-managers', 'store_manager')->name('landlord.propertManager.store');
         Route::get('/property-managers', 'property_managers')->name('landlord.propertyManager.index');
         Route::get('/property-managers/{uuid}', 'property_manager')->name('landlord.propertyManager.show');
         Route::post('/properties/{uuid}/units', 'store_unit')->name('lanldord.property.unit.store');
+        Route::put('/property-units/{uuid}', 'update_unit')->name('landlord.propertyUnit.update');
+        Route::delete('/property-units/{uuid}', 'delete_unit')->name('landlord.propertyUnit.delete');
         Route::post('/property-units/{uuid}/tenants', 'store_tenant')->name('landord.propertyUnit.tenant.store');
         Route::get('/tenants', 'tenants')->name('property.tenant.index');
         Route::put('/property-managers/{uuid}', 'update_manager')->name('property.manager.update');
@@ -113,7 +117,11 @@ Route::middleware('auth:user-api')->group(function(){
         Route::controller(ManagerPropertyController::class)->group(function(){
             Route::get('/properties', 'index')->name('manager,property.index');
             Route::post('/properties', 'store')->name('manager.propery.store');
+            Route::put('/properties/{uuid}', 'update_property')->name('manager.property.update');
+            Route::delete('/properties/{uuid}', 'delete_property')->name('manager.property.delete');
             Route::post('/properties/{uuid}/units', 'store_unit')->name('manager.propertyUnit.store');
+            Route::put('/property-units/{uuid}', 'update_unit')->name('manager.propertyUnit.update');
+            Route::delete('/property-units/{uuid}', 'delete_unit')->name('manager.propertyUnit.delete');
             Route::post('/property-units/{uuid}/tenants', 'store_tenant')->name('manager.propertyTenant.store');
             Route::get('/property-tenants', 'tenants')->name('manager.tenants.index');
             Route::put('/property-tenants/{uuid}', 'update_tenant')->name('manager.propertyTenant.update');
