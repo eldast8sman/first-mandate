@@ -28,7 +28,7 @@ class FlutterwaveController extends Controller
             $this->public_key = env('FLW_PUBLIC_KEY_DEV');
             $this->secret_hash = env('FLW_SECRET_HASH_DEV');
         } elseif(env('FLW_ENV') == 'PRODUCTION'){
-            $this->secret_key = env('FLW_PUBLIC_KEY_PROD');
+            $this->secret_key = env('FLW_SECRET_KEY_PROD');
             $this->public_key = env('FLW_PUBLIC_KEY_PROD');
             $this->secret_hash = env('FLW_SECRET_HASH_PROD');
         }
@@ -70,7 +70,6 @@ class FlutterwaveController extends Controller
             }
             return false;
         }
-        curl_close($ch);
     }
 
     private function perform_get_curl($url){
@@ -105,7 +104,6 @@ class FlutterwaveController extends Controller
             }
             return false;
         }
-		curl_close($ch);
     }
 
     public function initiate_payment($user, $amount){
