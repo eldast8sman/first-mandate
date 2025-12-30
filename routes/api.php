@@ -90,6 +90,7 @@ Route::middleware('auth:user-api')->group(function(){
         Route::controller(ApartmentController::class)->group(function(){
             Route::get('/apartments', 'index')->name('tenant.apartment.index');
             Route::post('/apartments', 'store')->name('tenant.apartment.store');
+            Route::put('/apartments/{uuid}', 'update')->name('tenant.apartment.update');
         });
 
         Route::controller(TenantReminderController::class)->group(function(){
@@ -126,6 +127,7 @@ Route::middleware('auth:user-api')->group(function(){
             Route::get('/property-tenants', 'tenants')->name('manager.tenants.index');
             Route::put('/property-tenants/{uuid}', 'update_tenant')->name('manager.propertyTenant.update');
             Route::post('/landlords', 'store_landlord')->name('manager.landlord.store');
+            Route::put('/landlords', 'update_landlord')->name('manager.landlord.update');
         });
 
         Route::controller(ManagerReminderController::class)->group(function(){
