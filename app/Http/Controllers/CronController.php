@@ -25,7 +25,10 @@ class CronController extends Controller
             
             // Get all reminders for today that haven't been sent
             $todaysReminders = Reminder::where('next_reminder_date', $today)
-                ->whereColumn('total_sent', '<', 'recurring_limit');
+                ->where(function($query) {
+                    $query->whereColumn('total_sent', '<', 'recurring_limit')
+                          ->orWhere('recurring_limit', 0);
+                });
 
             if ($todaysReminders->count() < 1) {
                 Log::info("No reminders found for today: {$today}");
