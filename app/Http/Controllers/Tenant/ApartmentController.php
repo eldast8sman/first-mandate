@@ -176,4 +176,84 @@ class ApartmentController extends Controller
             'data' => self::apartment($tenant)
         ], 200);
     }
+
+    public function update(StoreApartmentRequest $request, $uuid){
+        $tenant = PropertyTenant::where('uuid', $uuid)->where('user_id', $this->user->id)->first();
+        if(empty($tenant)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Apartment not found'
+            ], 404);
+        }
+        if(!$tenant->current_tenant){
+            return response([
+                'status' => 'failed',
+                'message' => 'You can only update your current Apartment tenancy'
+            ], 403);
+        }
+        if(empty($tenant)){
+            return response([
+                'status' => 'failed',
+                'message' => 'Apartment not found'
+            ], 404);
+        }
+
+        $property = Property::find($tenant->property_id);
+        if(!empty($property->landlord_id)){
+            $landlord = User::find($property->landlord_id);
+            if(!empty($landlord) and ($landlord->email_verified == 1)){
+                return response([
+                    'status' => 'failed',
+                    'message' => 'You cannot update this Apartment as it has a Landlord assigned'
+                ], 403);
+            }
+        }
+
+        $manager = PropertyManager::where('property_id', $property->id)->first();
+        if(!empty($manager)){
+            if(!empty($manager->manager_id)){
+                $prop_manager = User::find($manager->manager_id);
+                if(!empty($prop_manager) and ($prop_manager->email_verified == 1)){
+                    return response([
+                        'status' => 'failed',
+                        'message' => 'You cannot update this Apartment as it has a Property Manager assigned'
+                    ], 403);
+                }
+            }
+        }
+
+        $property->title = $request->property_title;
+        $property->address = $request->address;
+        $property->city = $request->city;
+        $property->state = $request->state;
+        $property->country = !empty($request->country) ? $request->country : "Nigeria";
+        $property->save();
+
+        $unit = PropertyUnit::find($tenant->property_unit_id);
+        $unit->unit_name = !empty($request->unit_name) ? $request->unit_name : $property->title;
+        $unit->unit_type = !empty($request->building_type) ? $request->building_type : "Flat";
+        $unit->no_of_bedrooms = !empty($request->no_of_bedrooms) ? $request->no_of_bedrooms : 2;
+        $unit->occupation_status = 'occupied';
+        $unit->save();
+
+        $today = date('Y-m-d');
+        $current_tenant = (($today >= $request->lease_start) and ($today <= $request->lease_end)) ? true : false;
+        
+        $tenant->lease_start = $request->lease_start;
+        $tenant->lease_end = $request->lease_end;
+        $tenant->current_tenant = $current_tenant;
+        $tenant->rent_payment_status = $request->rent_payment_status;
+        $tenant->rent_due_date = $request->rent_due_date;
+        $tenant->rent_amount = $request->rent_amount;
+        $tenant->renew_rent = $request->renew_rent;
+        $tenant->save();
+
+        NoticeController::land_log_activity($this->user->id, "Updated Apartment: {$property->title} - {$unit->unit_name}", "apartments", $tenant->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Apartment updated successfully',
+            'data' => self::apartment($tenant)
+        ], 200);
+    }
 }
