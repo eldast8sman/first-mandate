@@ -143,6 +143,7 @@ class UtilityBillController extends Controller
         $data = $payment['response'];
 
         $bill_payment = ElectricityBillPayment::create([
+            'uuid' => Str::uuid().'-'.time(),
             'user_id' => $this->user->id,
             'platform' => 'Flutterwave',
             'biller' => $request->biller,
