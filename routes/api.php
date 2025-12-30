@@ -184,6 +184,7 @@ Route::middleware('auth:user-api')->group(function(){
 Route::controller(FlutterwaveController::class)->prefix('flutterwave')->group(function(){
     Route::post('/webhook', 'webhook');
     Route::post('/transfer-callback', 'transfer_callback');
+    Route::get('/bill-payment-status/{reference}', 'bill_payment_status');
     Route::post('/bill-payment-callback/{reference}', 'bill_payment_callback');
 });
 

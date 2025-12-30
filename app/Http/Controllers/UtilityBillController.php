@@ -174,7 +174,8 @@ class UtilityBillController extends Controller
             'charges' => $charge,
             'pre_amount' => $wallet->balance + $total_amount,
             'post_amount' => $wallet->balance,
-            'remarks' => 'Payment for electricity bill - '.$request->biller.'_'.$request->item.'_'.$resolved->name
+            'remarks' => 'Payment for electricity bill - '.$request->biller.'_'.$request->item.'_'.$resolved->name,
+            'status' => 1
         ]);
 
         return response([
@@ -201,6 +202,7 @@ class UtilityBillController extends Controller
 
             Mail::to($this->user)->send(new ElectricityBillPaymentMail($this->user->name, $payment->biller, $payment->customer_name, $payment->customer_identifier, $payment->amount, $payment->token));
         }
+        return $payment;
     }
 
     public function check_electricity_bill_status($uuid){
@@ -212,11 +214,13 @@ class UtilityBillController extends Controller
             ], 404);
         }
 
-        $this->update_electricity_bill_payment_status($payment);
+        $updated_payment = $this->update_electricity_bill_payment_status($payment);
+        
 
         return response([
             'status' => 'success',
-            'message' => 'Electricity bill payment status updated successfully'
+            'message' => 'Electricity bill payment status updated successfully',
+            'data' => $updated_payment
         ], 200);
     }
 }
