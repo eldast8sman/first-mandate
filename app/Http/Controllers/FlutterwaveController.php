@@ -9,8 +9,10 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\WalletTransaction;
 use App\Models\FlutterwaveWebhook;
-use App\Models\CustomerFlutterwaveToken;
+use Illuminate\Support\Facades\Mail;
 use App\Models\ElectricityBillPayment;
+use App\Mail\ElectricityBillPaymentMail;
+use App\Models\CustomerFlutterwaveToken;
 
 class FlutterwaveController extends Controller
 {
@@ -634,8 +636,18 @@ class FlutterwaveController extends Controller
         $webhook->user_id = $bill_payment->user_id;
         $webhook->save();
 
-        $controller = new UtilityBillController();
-        $controller->update_electricity_bill_payment_status($bill_payment);
+        if(!$status = $this->bill_payment_status($bill_payment->transaction_reference)){
+            return response([], 404);
+        }
+
+        if(!empty($status->extra)){
+            $bill_payment->token = $status->extra;
+            $bill_payment->status = 'completed';
+            $bill_payment->response2 = json_encode($status);
+            $bill_payment->save();
+
+            Mail::to($bill_payment->user)->send(new ElectricityBillPaymentMail($bill_payment->user->name, $bill_payment->biller, $bill_payment->customer_name, $bill_payment->customer_identifier, $bill_payment->amount, $bill_payment->token));
+        }
 
         return response([], 200);
     }
