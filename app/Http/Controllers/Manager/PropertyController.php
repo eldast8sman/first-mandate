@@ -611,6 +611,44 @@ class PropertyController extends Controller
         ], 200);
     }
 
+    public function update_landlord(StoreLandlordRequest $request){
+        $property = Property::where('uuid', $request->property_uuid)->first();
+        $manager = PropertyManager::where('property_id', $property->id)->where('manager_id', $this->user->id)->first();
+        if(empty($manager)){
+            return response([
+                'status' => 'failed',
+                'message' => 'No Property was fetched'
+            ], 404);
+        }
+        if($property->landlord_id != $manager->landlord_id){
+            return response([
+                'status' => 'failed',
+                'message' => 'This Property does not have a Landlord assigned by you'
+            ], 409);
+        }
+        $landlord = User::find($property->landlord_id);
+        if($landlord->email_verified == 1 and $landlord->status == 1){
+            return response([
+                'status' => 'failed',
+                'message' => 'Cannot update Landlord details. The landlord account is verified and active. Only the landlord can update their details.'
+            ], 403);
+        }
+
+        $landlord->name = $request->name;
+        $landlord->phone = $request->phone;
+        $landlord->email = $request->email;
+        $landlord->save();
+
+        NoticeController::land_log_activity($this->user->id, "Updated Landlord Details, {$landlord->name}, for Property, {$property->title}", "properties", $property->uuid);
+
+        return response([
+            'status' => 'success',
+            'message' => 'Landlord details updated successfully',
+            'data' => self::property($property)
+        ], 200);
+    }
+
+
     public function update_tenant(StorePropertyTenantRequest $request, $uuid){
         $tenant = PropertyTenant::where('uuid', $uuid)->first();
         if(empty($tenant) or empty(PropertyManager::where('manager_id', $this->user->id)->where('property_id', $tenant->property_id)->first())){
