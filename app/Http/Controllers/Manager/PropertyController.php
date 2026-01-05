@@ -34,7 +34,7 @@ class PropertyController extends Controller
 
     public static function property(Property $property) : Property
     {
-        $property->landlord = User::where('id', $property->id)->first(['name', 'email', 'phone']);
+        $property->landlord = User::where('id', $property->landlord_id)->first(['name', 'email', 'phone']);
         $units = PropertyUnit::where('property_id', $property->id)->get();
         if(!empty($units)){
             foreach($units as $unit){
